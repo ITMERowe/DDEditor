@@ -87,9 +87,7 @@
       .quirk-toggle,
       .basic-skill-square,
       .skill-mode-btn,
-      .skill-empty,
-      .json-panel textarea,
-      .notes {
+      .json-panel textarea {
         border-radius: 0 !important;
       }
       .topbar {
@@ -277,6 +275,12 @@
         min-height: 0;
         overflow: hidden;
       }
+      .app.generic-mode {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .app.generic-mode #heroPanel {
+        display: none;
+      }
       .panel {
         background: var(--bg2);
         border-right: 1px solid var(--line);
@@ -442,12 +446,6 @@
         color: var(--dim);
         line-height: 1.5;
         margin-bottom: 12px;
-      }
-      .toolbar {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 12px;
-        flex-wrap: wrap;
       }
       .basic-layout-grid {
         display: grid;
@@ -655,13 +653,6 @@
         border-style: dashed;
         background: #0a0b0c;
       }
-      .skill-empty {
-        width: 100%;
-        border: 1px dashed var(--line2);
-        padding: 12px;
-        color: var(--dim);
-        font-size: 13px;
-      }
       .quirk-section-title,
       .trinket-section-title {
         display: flex;
@@ -702,19 +693,6 @@
         background: linear-gradient(180deg, #14171a, #0e1012);
         border: 1px solid var(--line);
         overflow: hidden;
-      }
-      .quirk-name {
-        display: block;
-        font-size: 15px;
-        font-weight: 900;
-        color: var(--textBright);
-        line-height: 1.25;
-        margin-bottom: 8px;
-        white-space: normal;
-        overflow: visible;
-        text-overflow: clip;
-        text-transform: capitalize;
-        word-break: break-word;
       }
       .quirk-name-row {
         display: grid;
@@ -839,10 +817,6 @@
           0 0 7px rgba(216, 69, 69, 0.85),
           0 0 16px rgba(181, 42, 42, 0.65);
       }
-      .quirk-kind,
-      .quirk-slot-no {
-        display: none !important;
-      }
       .trinket-list {
         display: grid;
         grid-template-columns: 1fr;
@@ -865,25 +839,26 @@
       }
       .json-panel textarea {
         width: 100%;
-        height: min(60vh, 500px);
+        height: clamp(620px, 78vh, 900px);
         background: var(--input-bg);
-        border: 1px solid var(--input-border);
-        color: var(--text);
+        border: 1px solid #7a1f1f;
+        color: #ffffff;
         padding: 14px;
         font-family: "SF Mono", Consolas, monospace;
         font-size: 12px;
         resize: vertical;
+        box-shadow:
+          0 0 6px rgba(181, 42, 42, 0.22),
+          inset 0 0 8px rgba(120, 20, 20, 0.08);
+        transition:
+          border-color 0.15s ease,
+          box-shadow 0.15s ease;
       }
-      .notes {
-        white-space: pre-wrap;
-        background: var(--input-bg);
-        border: 1px solid var(--input-border);
-        padding: 14px;
-        color: #a09888;
-        max-height: 500px;
-        overflow: auto;
-        font-size: 12px;
-        line-height: 1.6;
+      .json-panel textarea:focus {
+        border-color: #b52a2a;
+        box-shadow:
+          0 0 10px rgba(181, 42, 42, 0.4),
+          inset 0 0 10px rgba(181, 42, 42, 0.12);
       }
       ::-webkit-scrollbar {
         width: 8px;
@@ -961,6 +936,12 @@
         }
         .basic-skill-square {
           font-size: 18px;
+        }
+      }
+      @media (max-width: 900px) {
+        .json-panel textarea {
+          height: 72vh;
+          min-height: 520px;
         }
       }
       @media (max-width: 620px) {
@@ -1098,7 +1079,7 @@
         </div>
       </div>
       <div class="app hidden" id="app">
-        <div class="panel">
+        <div class="panel" id="heroPanel">
           <div class="panel-title">Heroes</div>
           <input
             id="heroSearch"
@@ -1111,13 +1092,6 @@
           <div id="emptyHero" class="hint"></div>
           <div id="heroEditor" class="hidden"></div>
           <div id="advancedJson" class="json-panel hidden">
-            <div class="toolbar">
-              <button id="syncFromJsonBtn" class="secondary">
-                Use Advanced JSON Changes</button
-              ><button id="syncToJsonBtn" class="secondary">
-                Refresh JSON From UI Data
-              </button>
-            </div>
             <textarea id="jsonEditor" spellcheck="false"></textarea>
           </div>
         </div>
@@ -1126,7 +1100,6 @@
     <script>
       const MAGIC = [0x01, 0xb1, 0x00, 0x00];
       let state = null;
-      let currentFileName = "recoded.json";
       class BinaryReader {
         constructor(buffer) {
           this.buffer = buffer;
@@ -1516,8 +1489,6 @@
           ]);
         }
         if (field.type === "embeddedDSON") {
-          // Embedded DSON recoding is conservative: keep original embedded binary unless the user did not change it.
-          // This avoids corrupting nested save objects until full nested structure replacement is implemented.
           return field.rawData;
         }
         return field.rawData;
@@ -1539,9 +1510,6 @@
         const dataParts = [];
         const newMeta2 = [];
         let pos = 0;
-        function valueAtPath(rootField, editedRoot) {
-          return editedRoot[rootField.name];
-        }
         function getValueForField(field) {
           const names = [];
           let f = field;
@@ -1755,24 +1723,6 @@
       function checkbox(id, label, checked, small = "") {
         return `<div class="field check-field"><label><input id="${id}" type="checkbox" ${checked ? "checked" : ""}/> <span>${label}</span></label>${small ? `<small>${small}</small>` : ""}</div>`;
       }
-      function isPositiveQuirk(name, obj, index) {
-        const v = obj || {};
-        if (typeof v.is_positive === "boolean") return v.is_positive;
-        if (typeof v.positive === "boolean") return v.positive;
-        if (typeof v.is_negative === "boolean") return !v.is_negative;
-        if (typeof v.negative === "boolean") return !v.negative;
-        if (typeof v.type === "string") {
-          const t = v.type.toLowerCase();
-          if (t.includes("positive")) return true;
-          if (t.includes("negative")) return false;
-        }
-        if (typeof v.category === "string") {
-          const t = v.category.toLowerCase();
-          if (t.includes("positive")) return true;
-          if (t.includes("negative")) return false;
-        }
-        return index < 5;
-      }
       function renderQuirkSlot(entry, slotNo) {
         const name = entry?.name || "";
         const obj = entry?.obj || null;
@@ -1980,8 +1930,6 @@
           const originalName = normalizeQuirkName(el.dataset.originalQuirk);
           const typedName = normalizeQuirkName(el.value);
 
-          // During typing, keep using the committed/original name so every
-          // partial letter does not create a new quirk in the JSON.
           if (h?.quirks?.[originalName]) {
             slotNames[slot] = originalName;
           } else if (h?.quirks?.[typedName]) {
@@ -2147,15 +2095,12 @@
           }
         }, 250);
       }
-      function showNotes(validation = null) {}
       async function handleFile(file) {
         try {
           const buffer = await file.arrayBuffer();
           state = decodeDSON(buffer);
           rosterData = JSON.parse(JSON.stringify(state.data));
           isRosterMode = isRosterData(rosterData);
-          currentFileName =
-            file.name.replace(/\.[^/.]+$/, "") + "_recoded.json";
           selectedHeroId = null;
           Object.keys(extraQuirkSlotsByHero).forEach((k) => delete extraQuirkSlotsByHero[k]);
 
@@ -2173,7 +2118,9 @@
           document.getElementById("buildVersion").textContent =
             state.metadata.buildNumber;
           document.getElementById("infoPanel").classList.remove("hidden");
-          document.getElementById("app").classList.remove("hidden");
+          const appEl = document.getElementById("app");
+          appEl.classList.remove("hidden");
+          appEl.classList.toggle("generic-mode", !isRosterMode);
           document.getElementById("uploadArea").classList.add("hidden");
           document.getElementById("jsonEditor").value = JSON.stringify(
             rosterData,
@@ -2207,11 +2154,48 @@
           alert("Could not decode this file: " + e.message);
         }
       }
-      function validateRoster() {
-        commitAllQuirkNameInputs();
-        const v = validateEditedJson(rosterData);
-        showNotes(v);
-        return v;
+      function refreshModeFromData() {
+        isRosterMode = isRosterData(rosterData);
+        document.getElementById("app").classList.toggle("generic-mode", !isRosterMode);
+        selectedHeroId = null;
+        document.getElementById("heroCount").textContent = isRosterMode
+          ? Object.keys(getHeroesObj()).length
+          : "N/A";
+        document.getElementById("fileModeLabel").textContent = isRosterMode
+          ? "persist.roster.json"
+          : "Generic JSON Editor";
+        if (isRosterMode) {
+          document.querySelector(".panel-title").textContent = "Heroes";
+          document.getElementById("heroSearch").classList.remove("hidden");
+          document.getElementById("heroList").classList.remove("hidden");
+          document.getElementById("emptyHero").textContent = "";
+          renderHeroList();
+          renderHeroEditor();
+        } else {
+          document.querySelector(".panel-title").textContent = "JSON";
+          document.getElementById("heroSearch").classList.add("hidden");
+          document.getElementById("heroList").classList.add("hidden");
+          document.getElementById("heroList").innerHTML = "";
+          document.getElementById("emptyHero").classList.add("hidden");
+          document.getElementById("heroEditor").classList.add("hidden");
+        }
+      }
+      function syncJsonEditorToData(options = {}) {
+        const textarea = document.getElementById("jsonEditor");
+        try {
+          rosterData = JSON.parse(textarea.value);
+          if (options.refreshUi) refreshModeFromData();
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+      let jsonAutoSyncTimer = null;
+      function autoSyncJsonEditor() {
+        clearTimeout(jsonAutoSyncTimer);
+        jsonAutoSyncTimer = setTimeout(() => {
+          syncJsonEditorToData({ refreshUi: isRosterMode && showAdvanced });
+        }, 350);
       }
       document.getElementById("chooseBtn").onclick = () =>
         document.getElementById("fileInput").click();
@@ -2240,48 +2224,17 @@
         if (event.target?.classList?.contains("quirk-name-input")) return;
         autoApplyHeroChanges();
       });
+      document.getElementById("jsonEditor").addEventListener("input", autoSyncJsonEditor);
+      document.getElementById("jsonEditor").addEventListener("blur", () => {
+        syncJsonEditorToData({ refreshUi: isRosterMode && showAdvanced });
+      });
       document.getElementById("advancedBtn").onclick = () => {
         setAdvancedVisible(!showAdvanced);
-      };
-      document.getElementById("syncFromJsonBtn").onclick = () => {
-        try {
-          rosterData = JSON.parse(document.getElementById("jsonEditor").value);
-          isRosterMode = isRosterData(rosterData);
-          selectedHeroId = null;
-          document.getElementById("heroCount").textContent = isRosterMode
-            ? Object.keys(getHeroesObj()).length
-            : "N/A";
-          document.getElementById("fileModeLabel").textContent = isRosterMode
-            ? "persist.roster.json"
-            : "Generic JSON Editor";
-          if (isRosterMode) {
-            document.querySelector(".panel-title").textContent = "Heroes";
-            document.getElementById("heroSearch").classList.remove("hidden");
-            document.getElementById("heroList").classList.remove("hidden");
-            document.getElementById("emptyHero").textContent = "";
-            renderHeroList();
-            renderHeroEditor();
-          } else {
-            document.querySelector(".panel-title").textContent = "JSON";
-            document.getElementById("heroSearch").classList.add("hidden");
-            document.getElementById("heroList").classList.add("hidden");
-            document.getElementById("heroList").innerHTML = "";
-            document.getElementById("emptyHero").classList.add("hidden");
-            document.getElementById("heroEditor").classList.add("hidden");
-          }
-        } catch (e) {}
-      };
-      document.getElementById("syncToJsonBtn").onclick = () => {
-        commitAllQuirkNameInputs();
-        document.getElementById("jsonEditor").value = JSON.stringify(
-          rosterData,
-          null,
-          2,
-        );
       };
       document.getElementById("exportDsonBtn").onclick = () => {
         try {
           commitAllQuirkNameInputs();
+          if (showAdvanced && !syncJsonEditorToData({ refreshUi: false })) return;
           const v = validateEditedJson(rosterData);
           if (!v.ok) return;
           const out = buildDSON(rosterData);
@@ -2303,6 +2256,7 @@
         document.getElementById("fileInput").value = "";
         document.getElementById("infoPanel").classList.add("hidden");
         document.getElementById("app").classList.add("hidden");
+        document.getElementById("app").classList.remove("generic-mode");
         document.getElementById("uploadArea").classList.remove("hidden");
         ["advancedBtn", "exportDsonBtn"].forEach(
           (id) => (document.getElementById(id).disabled = true),

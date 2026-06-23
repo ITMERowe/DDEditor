@@ -6,11 +6,11 @@ Everything runs entirely in your browser—no installation or backend required.
 
 ## Features
 
-- Browser-based save editor
-- Drag & drop save files
-- 100% client-side
-- View and edit saves as JSON
-- Export modified saves
+* Browser-based save editor
+* Drag & drop save files
+* 100% client-side
+* View and edit saves as JSON
+* Export modified saves
 
 ---
 
@@ -122,14 +122,12 @@ Example:
 
 ## Credits
 
-The DSON parsing logic is adapted from the reverse engineering work by **robojumper**:
+The DSON parsing logic is adapted from the reverse engineering work by **[robojumper](https://github.com/robojumper/DarkestDungeonSaveEditor)**.
 
-https://github.com/robojumper/DarkestDungeonSaveEditor
-
-This project packages that parser into a modern browser-based editor with a graphical interface and client-side workflow.
+This project packages that parser into a modern browser-based editor with a graphical interface and client-side workflow, building upon the original work available at the **[DarkestDungeonSaveEditor repository](https://github.com/robojumper/DarkestDungeonSaveEditor)**.
 
 ## License
 
-Please refer to the original project's license regarding the underlying DSON parsing implementation.
+Please refer to the **[original DarkestDungeonSaveEditor project's license](https://github.com/robojumper/DarkestDungeonSaveEditor)** regarding the underlying DSON parsing implementation.
 
 The browser interface, UI, and application wrapper are original additions built around that parser.

@@ -1,1132 +1,2313 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Darkest Dungeon DSON Editor</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Darkest Dungeon Save JSON Editor</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+      @font-face {
+        font-family: "IM Fell English SC";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: local("IM Fell English SC"), local("IMFellEnglishSC-Regular");
+      }
+      :root {
+        --bg: #07080a;
+        --bg2: #0a0b0d;
+        --panel: #0d0e10;
+        --line: #1a1c1f;
+        --line2: #25282c;
+        --red: #8a1c1c;
+        --red2: #b52a2a;
+        --gold: #8a7350;
+        --gold2: #a68b5b;
+        --goldDim: #5c4d35;
+        --text: #c4b8a5;
+        --textBright: #e0d5c5;
+        --muted: #6a6358;
+        --dim: #4a453d;
+        --green: #5a7a4a;
+        --greenBright: #7a9a6a;
+        --input-bg: #0a0b0c;
+        --input-border: #1e2023;
+        --gap: 12px;
+        --pad: clamp(10px, 1.4vw, 22px);
+        --sidebar: clamp(250px, 22vw, 320px);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+      }
+      body {
+        font-family: "IM Fell English SC", Georgia, serif;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 14px;
+      }
+      .container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg);
+        overflow: hidden;
+      }
+      .hidden {
+        display: none !important;
+      }
+      button,
+      input,
+      select,
+      textarea {
+        font-family: inherit;
+      }
+      button,
+      .upload-area,
+      .info-item,
+      .search,
+      .hero-card,
+      .rank-icon,
+      .field,
+      .field input,
+      .field select,
+      .section,
+      .basic-card,
+      .quirk-section,
+      .trinket-section,
+      .skills-section,
+      .quirk-count,
+      .quirk-slot,
+      .quirk-toggle,
+      .basic-skill-square,
+      .skill-mode-btn,
+      .skill-empty,
+      .json-panel textarea,
+      .notes {
+        border-radius: 0 !important;
+      }
+      .topbar {
+        min-height: 60px;
+        display: grid;
+        grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
+        align-items: center;
+        gap: 12px;
+        padding: 8px var(--pad);
+        background: linear-gradient(180deg, #0c0d0f, #07080a);
+        border-bottom: 2px solid var(--line);
+        flex-shrink: 0;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+      .brand > div:last-child {
+        min-width: 0;
+      }
+      .sigil {
+        width: 40px;
+        height: 40px;
+        position: relative;
+        display: grid;
+        place-items: center;
+        flex: 0 0 40px;
+      }
+      .sigil:after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border: 2px solid var(--red);
+        border-radius: 50%;
+        transform: rotate(45deg);
+        opacity: 0.5;
+      }
+      .sigil:before {
+        content: "⚔";
+        width: 32px;
+        height: 32px;
+        border: 2px solid var(--red);
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        color: var(--red);
+        font-size: 16px;
+        z-index: 1;
+      }
+      h1 {
+        font-size: clamp(16px, 1.6vw, 22px);
+        color: var(--textBright);
+        line-height: 1.1;
+        letter-spacing: 1px;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .subtitle {
+        font-size: clamp(10px, 0.9vw, 12px);
+        color: var(--gold2);
+        font-weight: 700;
+        margin-top: 2px;
+        letter-spacing: 0.5px;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        min-width: 0;
+      }
+      button {
+        height: 34px;
+        padding: 0 14px;
+        border: 1px solid var(--line2);
+        background: linear-gradient(180deg, #1a1c1f, #0f1012);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        white-space: nowrap;
+        letter-spacing: 0.5px;
+        transition: all 0.15s;
+      }
+      button:hover {
+        background: linear-gradient(180deg, #22252a, #15171a);
+        border-color: var(--goldDim);
+        color: var(--textBright);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        filter: grayscale(0.35);
+        background: linear-gradient(180deg, #111214, #0a0b0c);
+        border-color: var(--line);
+        color: var(--dim);
+      }
+      #clearBtn {
+        width: 34px;
+        padding: 0;
+        font-size: 16px;
+        flex: 0 0 34px;
+      }
+      .upload-area {
+        margin: 16px var(--pad);
+        padding: clamp(14px, 2vw, 22px);
+        text-align: center;
+        cursor: pointer;
+        color: var(--muted);
+        background: linear-gradient(
+          180deg,
+          rgba(10, 12, 14, 0.9),
+          rgba(5, 6, 8, 0.9)
+        );
+        border: 1px dashed var(--line2);
+        flex-shrink: 0;
+      }
+      .upload-area:hover,
+      .upload-area.dragover {
+        border-color: var(--red);
+        background: rgba(138, 28, 28, 0.08);
+      }
+      .upload-icon {
+        display: none;
+      }
+      .upload-text {
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--gold2);
+        letter-spacing: 0.5px;
+      }
+      .upload-subtext {
+        font-size: 12px;
+        color: var(--dim);
+        margin-top: 4px;
+      }
+      #fileInput {
+        display: none;
+      }
+      .info-panel {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+        margin: 12px var(--pad) 10px;
+        flex-shrink: 0;
+      }
+      .info-item {
+        padding: 8px 11px;
+        background: linear-gradient(
+          180deg,
+          rgba(12, 14, 16, 0.95),
+          rgba(7, 8, 10, 0.95)
+        );
+        border: 1px solid var(--line);
+        min-width: 0;
+      }
+      .info-label {
+        display: block;
+        color: var(--dim);
+        font-size: 9px;
+        text-transform: uppercase;
+        font-weight: 900;
+        letter-spacing: 1px;
+      }
+      .info-value {
+        display: block;
+        color: var(--gold2);
+        margin-top: 3px;
+        font-size: 12px;
+        word-break: break-word;
+      }
+      .app {
+        display: grid;
+        grid-template-columns: var(--sidebar) minmax(0, 1fr);
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+      }
+      .panel {
+        background: var(--bg2);
+        border-right: 1px solid var(--line);
+        padding: 14px 16px;
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      #mainPanel {
+        min-width: 0;
+        padding: 18px var(--pad) 48px;
+        background: var(--bg);
+        border-right: 0;
+        overflow: auto;
+      }
+      .panel-title {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 10px;
+      }
+      .search {
+        width: 100%;
+        height: 34px;
+        padding: 0 12px;
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--text);
+        font-size: 14px;
+        margin-bottom: 10px;
+      }
+      .search:focus,
+      input:focus,
+      select:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--goldDim);
+        box-shadow: 0 0 0 1px rgba(138, 115, 80, 0.15);
+      }
+      .hero-list {
+        flex: 1;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-height: 0;
+      }
+      .hero-card {
+        display: grid;
+        grid-template-columns: minmax(28px, 40px) minmax(0, 1fr) minmax(
+            54px,
+            66px
+          );
+        grid-template-areas: "num name weapon" "num class armour";
+        column-gap: 9px;
+        row-gap: 3px;
+        align-items: center;
+        min-height: 58px;
+        padding: 8px 12px;
+        border: 1px solid transparent;
+        background: #0e0f11;
+        cursor: pointer;
+        transition: all 0.15s;
+        overflow: hidden;
+      }
+      .hero-card:hover {
+        background: #131518;
+        border-color: var(--line2);
+      }
+      .hero-card.active {
+        background: linear-gradient(
+          90deg,
+          rgba(80, 20, 20, 0.4),
+          rgba(40, 10, 10, 0.3)
+        );
+        border-color: #6e2020;
+        box-shadow: inset 0 0 20px rgba(160, 40, 40, 0.08);
+      }
+      .hero-no {
+        grid-area: num;
+        align-self: start;
+        color: var(--dim);
+        font-size: 10px;
+        font-weight: 900;
+        line-height: 1;
+        padding-top: 3px;
+        white-space: nowrap;
+      }
+      .hero-name {
+        grid-area: name;
+        font-weight: 900;
+        font-size: 15px;
+        color: var(--textBright);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.15;
+      }
+      .hero-class {
+        grid-area: class;
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-transform: capitalize;
+      }
+      .hero-rank {
+        justify-self: end;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 5px;
+        color: #b0a898;
+        font-size: 11px;
+        font-weight: 900;
+        line-height: 1;
+        white-space: nowrap;
+      }
+      .hero-rank.weapon {
+        grid-area: weapon;
+      }
+      .hero-rank.armour {
+        grid-area: armour;
+      }
+      .rank-icon {
+        width: 17px;
+        height: 17px;
+        border: 1px solid var(--line);
+        background: #141618;
+        color: var(--gold);
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 17px;
+      }
+      .editor-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: flex-start;
+        margin-bottom: 10px;
+      }
+      .hero-title {
+        font-size: clamp(20px, 2vw, 26px);
+        color: var(--textBright);
+        font-weight: 400;
+        line-height: 1.05;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+      }
+      .hero-subtitle {
+        color: var(--muted);
+        margin-top: 3px;
+        font-size: 12px;
+      }
+      .hint {
+        font-size: 13px;
+        color: var(--dim);
+        line-height: 1.5;
+        margin-bottom: 12px;
+      }
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      .basic-layout-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--gap);
+        align-items: start;
+        width: 100%;
+      }
+      .basic-left-stack,
+      .basic-right-stack {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-auto-rows: auto;
+        gap: var(--gap);
+        align-content: start;
+        min-width: 0;
+      }
+      .basic-card,
+      .section,
+      .quirk-section {
+        background: linear-gradient(180deg, #0e1012, #0a0b0d);
+        border: 1px solid var(--line);
+        padding: 14px 16px;
+        min-width: 0;
+      }
+      .basic-card:hover,
+      .field:hover {
+        border-color: var(--line2);
+      }
+      .basic-card h3,
+      .quirk-section-title,
+      .trinket-section-title,
+      .skills-title-label {
+        font-size: 14px;
+        line-height: 1.15;
+        font-weight: 900;
+        color: var(--red2);
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        margin-bottom: 12px;
+      }
+      .basic-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+      }
+      .basic-card-grid.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .basic-card-grid.checks {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 8px 12px;
+      }
+      .field {
+        background: transparent;
+        border: 0;
+        padding: 0;
+        min-width: 0;
+      }
+      .field label {
+        display: block;
+        font-size: 10px;
+        color: var(--gold2);
+        margin-bottom: 4px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+      }
+      .field input,
+      .field select {
+        width: 100%;
+        height: 31px;
+        padding: 0 8px;
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--text);
+        font-size: 12px;
+      }
+      .field small {
+        display: block;
+        color: var(--dim);
+        margin-top: 6px;
+        line-height: 1.35;
+        font-size: 11px;
+      }
+      .field input[type="number"]::-webkit-inner-spin-button,
+      .field input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      .field input[type="number"] {
+        appearance: textfield;
+        -moz-appearance: textfield;
+      }
+      .field.check-field,
+      .field:has(input[type="checkbox"]) {
+        display: flex;
+        align-items: center;
+        min-height: 24px;
+      }
+      .field.check-field label,
+      .field:has(input[type="checkbox"]) label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin: 0;
+        font-size: 11px;
+        color: var(--gold2);
+        cursor: pointer;
+      }
+      .field input[type="checkbox"] {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 15px !important;
+        height: 15px !important;
+        min-width: 15px;
+        border: 1px solid #3a3d40;
+        background: var(--input-bg);
+        cursor: pointer;
+        display: grid;
+        place-content: center;
+        padding: 0;
+        margin: 0;
+      }
+      .field input[type="checkbox"]:checked {
+        border-color: var(--green);
+        background: rgba(90, 122, 74, 0.15);
+      }
+      .field input[type="checkbox"]:checked:before {
+        content: "✓";
+        color: var(--greenBright);
+        font-size: 11px;
+        font-weight: 900;
+        line-height: 1;
+      }
+      .skills-section,
+      .trinket-section,
+      .quirk-section {
+        margin: 0 !important;
+        height: auto;
+        min-height: 0;
+      }
+      .skills-bar-head {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 6px;
+      }
+      .skills-bar-head .skills-title-label {
+        margin: 0;
+      }
+      .skill-mode-tabs {
+        display: flex;
+        gap: 4px;
+        justify-self: start;
+      }
+      .skill-mode-btn {
+        height: 22px;
+        min-height: 22px;
+        padding: 0 10px;
+        font-size: 10px;
+        background: #14171a;
+        border-color: #2a2d30;
+        color: var(--muted);
+      }
+      .skill-mode-btn.active {
+        background: linear-gradient(180deg, #6a2020, #3a1010);
+        border-color: var(--red);
+        color: #fff;
+      }
+      .quirk-count {
+        border: 1px solid #2a2d30;
+        background: #0a0b0c;
+        color: var(--gold2);
+        font-size: 12px;
+        padding: 3px 8px;
+        white-space: nowrap;
+      }
+      .basic-skill-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 5px;
+        width: 100%;
+      }
+      .basic-skill-square {
+        width: 100%;
+        aspect-ratio: 1/1;
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, #14171a, #0e1012);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--gold2);
+        font-size: clamp(14px, 2.2vw, 20px);
+        font-weight: 900;
+        line-height: 1;
+      }
+      .basic-skill-square.filled {
+        border-color: #3a3d40;
+        background: linear-gradient(180deg, #1a1e22, #121518);
+      }
+      .basic-skill-square.empty {
+        color: var(--dim);
+        border-style: dashed;
+        background: #0a0b0c;
+      }
+      .skill-empty {
+        width: 100%;
+        border: 1px dashed var(--line2);
+        padding: 12px;
+        color: var(--dim);
+        font-size: 13px;
+      }
+      .quirk-section-title,
+      .trinket-section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .quirk-section-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .quirk-add-btn {
+        width: 22px;
+        height: 22px;
+        min-height: 22px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--gold2);
+        font-size: 18px;
+        line-height: 1;
+      }
+      .quirk-add-btn:hover {
+        background: transparent;
+        color: var(--textBright);
+        filter: drop-shadow(0 0 6px rgba(166, 139, 91, 0.45));
+      }
+      .quirk-slots {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .quirk-slot {
+        display: block;
+        min-height: 76px;
+        padding: 11px 12px;
+        background: linear-gradient(180deg, #14171a, #0e1012);
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+      .quirk-name {
+        display: block;
+        font-size: 15px;
+        font-weight: 900;
+        color: var(--textBright);
+        line-height: 1.25;
+        margin-bottom: 8px;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        text-transform: capitalize;
+        word-break: break-word;
+      }
+      .quirk-name-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .quirk-name-input {
+        width: 100%;
+        height: 26px;
+        padding: 0;
+        border: 0;
+        border-bottom: 1px solid transparent;
+        background: transparent;
+        color: var(--textBright);
+        font-size: 15px;
+        font-weight: 900;
+        line-height: 1.25;
+        text-transform: none;
+      }
+      .quirk-delete-btn {
+        width: 22px;
+        height: 22px;
+        min-height: 22px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--dim);
+        font-size: 17px;
+        line-height: 1;
+        opacity: 0.65;
+      }
+      .quirk-delete-btn:hover {
+        background: transparent;
+        color: var(--red2);
+        opacity: 1;
+        filter: drop-shadow(0 0 5px rgba(181, 42, 42, 0.75));
+      }
+      .quirk-delete-btn:disabled {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .quirk-name-input::placeholder {
+        color: var(--dim);
+      }
+      .quirk-name-input:focus {
+        border-color: var(--goldDim);
+        box-shadow: none;
+      }
+      .quirk-slot.empty {
+        opacity: 0.72;
+      }
+      .quirk-flags {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .quirk-toggle {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--dim);
+        font-size: 15px;
+        line-height: 1;
+        cursor: pointer;
+        user-select: none;
+      }
+      .quirk-toggle input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .quirk-toggle .mark {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transform: translateZ(0);
+        transition:
+          color 0.15s ease,
+          filter 0.15s ease,
+          text-shadow 0.15s ease,
+          transform 0.15s ease;
+      }
+      .quirk-toggle .mark svg {
+        width: 15px;
+        height: 15px;
+        display: block;
+        stroke: currentColor;
+        fill: none;
+      }
+      .quirk-toggle .mark svg.fill-icon {
+        fill: currentColor;
+        stroke: none;
+      }
+      .quirk-toggle input:checked + .mark {
+        color: var(--red2);
+        filter: drop-shadow(0 0 3px rgba(181, 42, 42, 0.9))
+          drop-shadow(0 0 9px rgba(138, 28, 28, 0.65));
+        text-shadow:
+          0 0 5px rgba(181, 42, 42, 0.75),
+          0 0 12px rgba(138, 28, 28, 0.55);
+      }
+      .quirk-toggle:hover .mark {
+        color: var(--gold2);
+        filter: drop-shadow(0 0 5px rgba(166, 139, 91, 0.35));
+        transform: scale(1.08);
+      }
+      .quirk-toggle:hover input:checked + .mark {
+        color: #d84545;
+        filter: drop-shadow(0 0 4px rgba(216, 69, 69, 0.95))
+          drop-shadow(0 0 12px rgba(181, 42, 42, 0.7));
+        text-shadow:
+          0 0 7px rgba(216, 69, 69, 0.85),
+          0 0 16px rgba(181, 42, 42, 0.65);
+      }
+      .quirk-kind,
+      .quirk-slot-no {
+        display: none !important;
+      }
+      .trinket-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 7px;
+      }
+      .trinket-row {
+        display: grid;
+        grid-template-columns: 54px minmax(0, 1fr) minmax(0, 0.75fr);
+        gap: 8px;
+        align-items: end;
+      }
+      .trinket-row.empty {
+        opacity: 0.55;
+      }
+      .trinket-row.empty input {
+        color: var(--dim);
+      }
+      .json-panel {
+        margin-top: 14px;
+      }
+      .json-panel textarea {
+        width: 100%;
+        height: min(60vh, 500px);
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--text);
+        padding: 14px;
+        font-family: "SF Mono", Consolas, monospace;
+        font-size: 12px;
+        resize: vertical;
+      }
+      .notes {
+        white-space: pre-wrap;
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        padding: 14px;
+        color: #a09888;
+        max-height: 500px;
+        overflow: auto;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #1e2023;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #2a2d30;
+      }
+      @media (max-width: 1200px) {
+        :root {
+          --sidebar: 260px;
         }
-
+        .topbar {
+          grid-template-columns: 1fr;
+        }
+        .controls {
+          justify-content: flex-start;
+        }
+        .basic-card-grid.three {
+          grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        }
+      }
+      @media (max-width: 900px) {
+        html,
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
-            color: #e0e0e0;
-            min-height: 100vh;
-            padding: 20px;
+          overflow: auto;
         }
-
         .container {
-            max-width: 1600px;
-            margin: 0 auto;
+          height: auto;
+          min-height: 100vh;
+          overflow: visible;
         }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            gap: 20px;
+        .topbar {
+          padding: 8px 12px;
         }
-
-        h1 {
-            color: #ff6b6b;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            font-size: 28px;
+        .app {
+          display: flex;
+          flex-direction: column;
+          overflow: visible;
         }
-
-        .top-controls {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
+        .panel {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+          max-height: 40vh;
+          overflow: hidden;
         }
-
-        .file-info {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid #404050;
-            border-radius: 6px;
-            padding: 12px 15px;
-            font-size: 13px;
-            min-width: 300px;
+        .hero-list {
+          max-height: 32vh;
         }
-
-        .file-info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 4px 0;
+        .info-panel {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          margin-inline: 12px;
         }
-
-        .info-label {
-            color: #808080;
-            font-weight: bold;
-        }
-
-        .info-value {
-            color: #ff6b6b;
-            font-family: 'Courier New', monospace;
-        }
-
-        button {
-            background: #ff6b6b;
-            border: none;
-            color: white;
-            padding: 10px 18px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            white-space: nowrap;
-        }
-
-        button:hover {
-            background: #ff8787;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
-        }
-
-        button:disabled {
-            background: #666;
-            cursor: not-allowed;
-            transform: none;
-        }
-
         .upload-area {
-            background: rgba(255, 107, 107, 0.1);
-            border: 3px dashed #ff6b6b;
-            border-radius: 10px;
-            padding: 30px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 20px;
+          margin-inline: 12px;
         }
-
-        .upload-area:hover {
-            background: rgba(255, 107, 107, 0.2);
-            border-color: #ff8787;
+        #mainPanel {
+          overflow: visible;
+          padding: 14px 16px 40px;
         }
-
-        .upload-area.dragover {
-            background: rgba(255, 107, 107, 0.3);
-            border-color: #ff8787;
-            transform: scale(1.02);
+        .basic-layout-grid,
+        .quirk-slots {
+          grid-template-columns: 1fr;
         }
-
-        .upload-area.hidden {
-            display: none;
+        .controls button {
+          height: 32px;
+          padding: 0 10px;
+          font-size: 11px;
         }
-
-        .upload-text {
-            font-size: 16px;
-            font-weight: bold;
-            color: #ff6b6b;
+        .basic-skill-square {
+          font-size: 18px;
         }
-
-        #fileInput {
-            display: none;
+      }
+      @media (max-width: 620px) {
+        body {
+          font-size: 12px;
         }
-
-        .status {
-            background: rgba(0, 0, 0, 0.3);
-            border-left: 4px solid #ff6b6b;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            min-height: 40px;
-            display: flex;
-            align-items: center;
+        .brand {
+          gap: 8px;
         }
-
-        .status.error {
-            border-left-color: #ff4444;
-            background: rgba(255, 68, 68, 0.1);
-            color: #ff8787;
+        .sigil {
+          width: 32px;
+          height: 32px;
+          flex-basis: 32px;
         }
-
-        .status.success {
-            border-left-color: #4caf50;
-            background: rgba(76, 175, 80, 0.1);
-            color: #81c784;
+        .sigil:before {
+          width: 24px;
+          height: 24px;
+          font-size: 12px;
         }
-
-        .status.hidden {
-            display: none;
+        .controls {
+          gap: 6px;
         }
-
-        .editor-container {
-            display: none;
-            gap: 20px;
+        .controls button {
+          flex: 1 1 calc(50% - 6px);
+          height: 30px;
+          padding: 0 8px;
+          font-size: 10px;
         }
-
-        .editor-container.visible {
-            display: flex;
+        #clearBtn {
+          flex: 0 0 30px;
+          width: 30px;
         }
-
-        .sidebar {
-            width: 250px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid #404050;
-            border-radius: 6px;
-            padding: 15px;
-            max-height: calc(100vh - 300px);
-            overflow-y: auto;
+        .info-panel {
+          grid-template-columns: 1fr;
+          gap: 4px;
         }
-
-        .sidebar-title {
-            color: #ff6b6b;
-            font-weight: bold;
-            margin-bottom: 10px;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        .panel {
+          padding: 10px 12px;
         }
-
-        .tree-item {
-            padding: 5px 0;
-            cursor: pointer;
-            color: #e0e0e0;
-            font-size: 13px;
-            transition: color 0.2s ease;
-            padding-left: 5px;
-            border-radius: 3px;
+        .hero-card {
+          min-height: 52px;
+          padding: 6px 9px;
+          grid-template-columns: 30px minmax(0, 1fr) 58px;
         }
-
-        .tree-item:hover {
-            background: rgba(255, 107, 107, 0.1);
-            color: #ff6b6b;
+        .hero-name {
+          font-size: 13px;
         }
-
-        .tree-item.active {
-            background: rgba(255, 107, 107, 0.2);
-            color: #ff8787;
-            font-weight: bold;
+        .hero-class,
+        .hero-rank {
+          font-size: 10px;
         }
-
-        .tree-expand {
-            display: inline-block;
-            width: 15px;
-            text-align: center;
-            margin-right: 5px;
-            cursor: pointer;
+        .basic-card,
+        .section,
+        .quirk-section {
+          padding: 12px;
         }
-
-        .main-panel {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid #404050;
-            border-radius: 6px;
-            padding: 20px;
-            overflow-y: auto;
-            max-height: calc(100vh - 300px);
+        .basic-card-grid,
+        .basic-card-grid.three,
+        .basic-card-grid.checks {
+          grid-template-columns: 1fr;
         }
-
-        .editor-title {
-            color: #ff6b6b;
-            font-weight: bold;
-            margin-bottom: 15px;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        .trinket-row {
+          grid-template-columns: 1fr;
         }
-
-        .field-group {
-            margin-bottom: 15px;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.2);
-            border-left: 3px solid #ff6b6b;
-            border-radius: 4px;
+        .quirk-flags {
+          gap: 7px;
         }
-
-        .field-label {
-            color: #808080;
-            font-weight: bold;
-            font-size: 12px;
-            margin-bottom: 6px;
-            display: block;
+        .basic-skill-grid {
+          gap: 4px;
         }
-
-        .field-value {
-            display: flex;
-            gap: 8px;
-            align-items: center;
+        .basic-skill-square {
+          font-size: 14px;
         }
-
-        input[type="text"],
-        input[type="number"],
-        textarea,
-        select {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid #404050;
-            border-radius: 4px;
-            color: #e0e0e0;
-            padding: 8px 10px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            flex: 1;
-            transition: border-color 0.2s ease;
+        .skills-bar-head {
+          grid-template-columns: 1fr;
+          align-items: start;
         }
-
-        input[type="text"]:focus,
-        input[type="number"]:focus,
-        textarea:focus,
-        select:focus {
-            outline: none;
-            border-color: #ff6b6b;
-            box-shadow: 0 0 8px rgba(255, 107, 107, 0.2);
+        .skill-mode-tabs {
+          justify-self: stretch;
         }
-
-        .object-tree {
-            margin: 10px 0;
+        .skill-mode-btn {
+          flex: 1;
         }
-
-        .object-item {
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.2);
-            border-left: 3px solid #ff6b6b;
-            margin-bottom: 8px;
-            border-radius: 4px;
+        .skills-bar-head .quirk-count {
+          justify-self: start;
         }
-
-        .object-header {
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #ff8787;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-
-        .object-content {
-            padding-left: 15px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .object-content.collapsed {
-            display: none;
-        }
-
-        .array-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 10px 0;
-            font-size: 12px;
-        }
-
-        .array-table th,
-        .array-table td {
-            border: 1px solid #404050;
-            padding: 8px;
-            text-align: left;
-            background: rgba(0, 0, 0, 0.2);
-        }
-
-        .array-table th {
-            background: rgba(255, 107, 107, 0.1);
-            color: #ff8787;
-            font-weight: bold;
-        }
-
-        .array-table tr:hover {
-            background: rgba(255, 107, 107, 0.05);
-        }
-
-        .search-box {
-            width: 100%;
-            margin-bottom: 10px;
-        }
-
-        .footer-controls {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .modified-indicator {
-            color: #ffaa00;
-            font-weight: bold;
-            font-size: 12px;
-        }
-
-        @media (max-width: 1024px) {
-            .editor-container {
-                flex-direction: column;
-            }
-
-            .sidebar {
-                width: 100%;
-                max-height: 300px;
-            }
-
-            .main-panel {
-                max-height: 500px;
-            }
-        }
+      }
     </style>
-</head>
-<body>
+    <base target="_blank" />
+  </head>
+  <body>
     <div class="container">
-        <div class="header">
-            <h1>⚔️ Darkest Dungeon DSON Editor</h1>
+      <div class="topbar">
+        <div class="brand">
+          <div class="sigil"></div>
+          <div>
+            <h1>Darkest Dungeon Save JSON Editor</h1>
+            <div class="subtitle" id="fileModeLabel">Roster UI / JSON Editor</div>
+          </div>
         </div>
-
-        <div class="upload-area" id="uploadArea">
-            <div class="upload-text">📁 Drop DSON file here or click to select</div>
-            <input type="file" id="fileInput" accept=".json" />
+        <div class="controls">
+          <button id="chooseBtn" class="secondary">Choose File</button
+          ><button id="advancedBtn" disabled class="secondary">
+            Advanced JSON</button
+          ><button id="exportDsonBtn" disabled>Export Encoded JSON</button
+          ><button id="clearBtn" class="danger">⚙</button>
         </div>
-
-        <div class="status hidden" id="status"></div>
-
-        <div class="editor-container" id="editorContainer">
-            <div class="sidebar">
-                <div class="sidebar-title">Navigation</div>
-                <input type="text" class="search-box" id="searchBox" placeholder="Search fields...">
-                <div id="navigationTree"></div>
+      </div>
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📁</div>
+        <div class="upload-text">Drop encoded Darkest Dungeon JSON here</div>
+        <div class="upload-subtext">or click Choose File</div>
+        <input type="file" id="fileInput" accept=".json" />
+      </div>
+      <div class="info-panel hidden" id="infoPanel">
+        <div class="info-item">
+          <span class="info-label">File</span
+          ><span class="info-value" id="fileName">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Heroes</span
+          ><span class="info-value" id="heroCount">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Objects</span
+          ><span class="info-value" id="objectCount">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Fields</span
+          ><span class="info-value" id="fieldCount">-</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Build</span
+          ><span class="info-value" id="buildVersion">-</span>
+        </div>
+      </div>
+      <div class="app hidden" id="app">
+        <div class="panel">
+          <div class="panel-title">Heroes</div>
+          <input
+            id="heroSearch"
+            class="search"
+            placeholder="Search heroes..."
+          />
+          <div id="heroList" class="hero-list"></div>
+        </div>
+        <div class="panel" id="mainPanel">
+          <div id="emptyHero" class="hint"></div>
+          <div id="heroEditor" class="hidden"></div>
+          <div id="advancedJson" class="json-panel hidden">
+            <div class="toolbar">
+              <button id="syncFromJsonBtn" class="secondary">
+                Use Advanced JSON Changes</button
+              ><button id="syncToJsonBtn" class="secondary">
+                Refresh JSON From UI Data
+              </button>
             </div>
-
-            <div class="main-panel">
-                <div class="editor-title" id="editorTitle">Select an item</div>
-                <div class="file-info" id="fileInfoPanel" style="display: none; margin-bottom: 20px;">
-                    <div class="file-info-row">
-                        <span class="info-label">File:</span>
-                        <span class="info-value" id="infoFileName">-</span>
-                    </div>
-                    <div class="file-info-row">
-                        <span class="info-label">Size:</span>
-                        <span class="info-value" id="infoFileSize">-</span>
-                    </div>
-                    <div class="file-info-row">
-                        <span class="info-label">Objects:</span>
-                        <span class="info-value" id="infoObjectCount">-</span>
-                    </div>
-                    <div class="file-info-row">
-                        <span class="info-label">Fields:</span>
-                        <span class="info-value" id="infoFieldCount">-</span>
-                    </div>
-                </div>
-                <div id="editorContent"></div>
-
-                <div class="footer-controls">
-                    <button id="downloadBtn" disabled>💾 Download JSON</button>
-                    <button id="copyBtn" disabled>📋 Copy JSON</button>
-                    <button id="resetBtn" disabled>↻ Reset Changes</button>
-                    <button id="clearBtn">🗑️ Clear</button>
-                </div>
-            </div>
+            <textarea id="jsonEditor" spellcheck="false"></textarea>
+          </div>
         </div>
+      </div>
     </div>
-
     <script>
-        const MAGIC = [0x01, 0xB1, 0x00, 0x00];
-        let decodedData = null;
-        let originalData = null;
-        let currentFileName = "decoded.json";
-        let currentMetadata = null;
-        let isModified = false;
-
-        class BinaryReader {
-            constructor(buffer) {
-                this.buffer = buffer;
-                this.view = new DataView(buffer);
-                this.offset = 0;
-            }
-
-            readInt32() {
-                const value = this.view.getInt32(this.offset, true);
-                this.offset += 4;
-                return value;
-            }
-
-            readFloat32() {
-                const value = this.view.getFloat32(this.offset, true);
-                this.offset += 4;
-                return value;
-            }
-
-            readByte() {
-                const value = this.view.getUint8(this.offset);
-                this.offset += 1;
-                return value;
-            }
-
-            readBytes(count) {
-                const bytes = new Uint8Array(this.buffer, this.offset, count);
-                this.offset += count;
-                return bytes;
-            }
-
-            seek(offset) {
-                this.offset = offset;
-            }
-
-            peek() {
-                return this.offset;
-            }
-
-            remaining() {
-                return this.view.byteLength - this.offset;
-            }
+      const MAGIC = [0x01, 0xb1, 0x00, 0x00];
+      let state = null;
+      let currentFileName = "recoded.json";
+      class BinaryReader {
+        constructor(buffer) {
+          this.buffer = buffer;
+          this.view = new DataView(buffer);
+          this.offset = 0;
         }
-
-        function stringHash(str) {
-            let hash = 0;
-            const enc = new TextEncoder().encode(str);
-            for (let i = 0; i < enc.length; i++) {
-                hash = ((hash * 53) + enc[i]) | 0;
-            }
-            return hash >>> 0;
+        readInt32() {
+          const v = this.view.getInt32(this.offset, true);
+          this.offset += 4;
+          return v;
         }
-
-        function readString(bytes, offset, length) {
-            const arr = bytes.slice(offset, offset + length);
-            return new TextDecoder('utf-8').decode(arr);
+        readFloat32() {
+          const v = this.view.getFloat32(this.offset, true);
+          this.offset += 4;
+          return v;
         }
-
-        function getAlignmentPadding(offset) {
-            return (4 - (offset % 4)) % 4;
+        readByte() {
+          const v = this.view.getUint8(this.offset);
+          this.offset++;
+          return v;
         }
-
-        function parseFieldValue(fieldData, dataOffsetInFile) {
-            if (fieldData.length === 0) {
-                return null;
-            }
-
-            const padding = getAlignmentPadding(dataOffsetInFile);
-
-            if (fieldData.length === 1) {
-                const byte = fieldData[0];
-                if (byte === 0 || byte === 1) {
-                    return byte === 1;
-                }
-                if (byte >= 0x20 && byte <= 0x7E) {
-                    return String.fromCharCode(byte);
-                }
-                return byte;
-            }
-
-            if (fieldData.length >= padding + 5) {
+        seek(o) {
+          this.offset = o;
+        }
+      }
+      function stringHash(str) {
+        let hash = 0;
+        const enc = new TextEncoder().encode(str);
+        for (let i = 0; i < enc.length; i++) {
+          hash = (hash * 53 + enc[i]) | 0;
+        }
+        return hash >>> 0;
+      }
+      function readString(bytes, offset, length) {
+        return new TextDecoder("utf-8").decode(
+          bytes.slice(offset, offset + length),
+        );
+      }
+      function utf8Bytes(s) {
+        return new TextEncoder().encode(s);
+      }
+      function getAlignmentPadding(offset) {
+        return (4 - (offset % 4)) % 4;
+      }
+      function concatArrays(arrs) {
+        let n = arrs.reduce((a, b) => a + b.length, 0);
+        let out = new Uint8Array(n);
+        let p = 0;
+        for (const a of arrs) {
+          out.set(a, p);
+          p += a.length;
+        }
+        return out;
+      }
+      function i32Bytes(v) {
+        const b = new ArrayBuffer(4);
+        new DataView(b).setInt32(0, v, true);
+        return new Uint8Array(b);
+      }
+      function f32Bytes(v) {
+        const b = new ArrayBuffer(4);
+        new DataView(b).setFloat32(0, v, true);
+        return new Uint8Array(b);
+      }
+      function bytesToHex(bytes) {
+        return Array.from(bytes)
+          .map((x) => x.toString(16).padStart(2, "0"))
+          .join(" ");
+      }
+      function parseFieldValue(fieldData, dataOffsetInBlock) {
+        if (fieldData.length === 0) return { type: "empty", value: null };
+        const padding = getAlignmentPadding(dataOffsetInBlock);
+        if (fieldData.length === 1) {
+          const byte = fieldData[0];
+          if (byte === 0 || byte === 1)
+            return { type: "bool", value: byte === 1 };
+          if (byte >= 0x20 && byte <= 0x7e)
+            return { type: "byteChar", value: String.fromCharCode(byte) };
+          return { type: "byte", value: byte };
+        }
+        if (fieldData.length >= padding + 5) {
+          try {
+            const view = new DataView(
+              fieldData.buffer,
+              fieldData.byteOffset + padding,
+            );
+            const strlen = view.getInt32(0, true);
+            if (strlen > 0 && fieldData.length === padding + 4 + strlen) {
+              const data = fieldData.slice(padding + 4, padding + 4 + strlen);
+              const magic = Array.from(data.slice(0, 4));
+              if (strlen > 4 && magic.join(",") === MAGIC.join(",")) {
                 try {
-                    const view = new DataView(fieldData.buffer, fieldData.byteOffset + padding);
-                    const strlen = view.getInt32(0, true);
-                    
-                    if (strlen > 4 && fieldData.length === padding + 4 + strlen) {
-                        const stringDataBytes = fieldData.slice(padding + 4, padding + 4 + Math.min(4, strlen));
-                        const magic = Array.from(stringDataBytes);
-                        if (magic.length === 4 && magic.join(',') === MAGIC.join(',')) {
-                            try {
-                                const embeddedBuffer = fieldData.buffer.slice(
-                                    fieldData.byteOffset + padding + 4,
-                                    fieldData.byteOffset + padding + 4 + strlen - 1
-                                );
-                                const result = decodeDSON(embeddedBuffer);
-                                return result.data;
-                            } catch (e) {}
-                        }
-                        
-                        const str = readString(fieldData, padding + 4, strlen - 1);
-                        return str;
-                    }
+                  const embeddedBuffer = fieldData.buffer.slice(
+                    fieldData.byteOffset + padding + 4,
+                    fieldData.byteOffset + padding + 4 + strlen - 1,
+                  );
+                  const result = decodeDSON(embeddedBuffer);
+                  return {
+                    type: "embeddedDSON",
+                    value: result.data,
+                    embedded: result,
+                  };
                 } catch (e) {}
+              }
+              return {
+                type: "string",
+                value: readString(
+                  fieldData,
+                  padding + 4,
+                  Math.max(0, strlen - 1),
+                ),
+              };
             }
-
-            if (fieldData.length >= padding + 4) {
-                try {
-                    const view = new DataView(fieldData.buffer, fieldData.byteOffset + padding, 4);
-                    const intVal = view.getInt32(0, true);
-                    if (fieldData.length === padding + 4) {
-                        return intVal;
-                    }
-                } catch (e) {}
-            }
-
-            if (fieldData.length >= padding + 4) {
-                try {
-                    const view = new DataView(fieldData.buffer, fieldData.byteOffset + padding, 4);
-                    const floatVal = view.getFloat32(0, true);
-                    if (fieldData.length === padding + 4 && !Number.isInteger(floatVal)) {
-                        return floatVal;
-                    }
-                } catch (e) {}
-            }
-
-            return `<data:${fieldData.length}b>`;
+          } catch (e) {}
         }
-
-        function decodeDSON(buffer) {
-            const bytes = new Uint8Array(buffer);
-            const reader = new BinaryReader(buffer);
-
-            const magic = Array.from(bytes.slice(0, 4));
-            if (magic.join(',') !== MAGIC.join(',')) {
-                throw new Error(`Invalid magic number: ${magic.map(x => x.toString(16).padStart(2, '0')).join(' ')}`);
-            }
-
-            reader.seek(0);
-            const magicNum = reader.readInt32();
-            const revision = reader.readInt32();
-            const headerLength = reader.readInt32();
-            const _zeroes1 = reader.readInt32();
-            const meta1Size = reader.readInt32();
-            const numMeta1 = reader.readInt32();
-            const meta1Offset = reader.readInt32();
-            const _zeroes2a = reader.readInt32();
-            const _zeroes2b = reader.readInt32();
-            const _zeroes2c = reader.readInt32();
-            const _zeroes2d = reader.readInt32();
-            const numMeta2 = reader.readInt32();
-            const meta2Offset = reader.readInt32();
-            const _zeroes4 = reader.readInt32();
-            const dataLength = reader.readInt32();
-            const dataOffset = reader.readInt32();
-
-            if (headerLength !== 64) {
-                throw new Error(`Invalid header length: ${headerLength}`);
-            }
-
-            const buildNumber = (revision >> 16) & 0xFFFF;
-
-            const meta1 = [];
-            reader.seek(meta1Offset);
-            for (let i = 0; i < numMeta1; i++) {
-                meta1.push({
-                    parentIndex: reader.readInt32(),
-                    meta2EntryIdx: reader.readInt32(),
-                    numDirectChildren: reader.readInt32(),
-                    numAllChildren: reader.readInt32()
-                });
-            }
-
-            const meta2 = [];
-            reader.seek(meta2Offset);
-            for (let i = 0; i < numMeta2; i++) {
-                const nameHash = reader.readInt32();
-                const offset = reader.readInt32();
-                const fieldInfo = reader.readInt32();
-                const isObject = (fieldInfo & 1) === 1;
-                const nameLen = (fieldInfo & 0b11111111100) >> 2;
-                const meta1Idx = (fieldInfo & 0b1111111111111111111100000000000) >> 11;
-
-                meta2.push({
-                    nameHash,
-                    offset,
-                    fieldInfo,
-                    isObject,
-                    nameLen,
-                    meta1Idx
-                });
-            }
-
-            const dataBlock = bytes.slice(dataOffset, dataOffset + dataLength);
-
-            const fields = [];
-            for (let i = 0; i < meta2.length; i++) {
-                const m = meta2[i];
-                let off = m.offset;
-
-                const name = readString(dataBlock, off, m.nameLen - 1);
-                off += m.nameLen;
-
-                let nextOffset = dataBlock.length;
-                for (let j = 0; j < meta2.length; j++) {
-                    if (meta2[j].offset > m.offset && meta2[j].offset < nextOffset) {
-                        nextOffset = meta2[j].offset;
-                    }
-                }
-
-                const rawData = dataBlock.slice(off, nextOffset);
-
-                fields.push({
-                    name,
-                    isObject: m.isObject,
-                    meta1Idx: m.meta1Idx,
-                    rawData,
-                    dataStartInFile: off,
-                    dataOffset: m.offset
-                });
-            }
-
-            fields.sort((a, b) => a.dataOffset - b.dataOffset);
-
-            for (const field of fields) {
-                if (!field.isObject) {
-                    field.value = parseFieldValue(field.rawData, field.dataStartInFile);
-                }
-            }
-
-            const root = [];
-            const fieldStack = [];
-            let runningObjIdx = -1;
-
-            for (const field of fields) {
-                if (field.isObject) {
-                    field.children = [];
-                    const expected = (meta1[field.meta1Idx] && meta1[field.meta1Idx].numDirectChildren) || 0;
-                    field.expectedChildren = expected;
-                    runningObjIdx++;
-                }
-
-                if (fieldStack.length === 0) {
-                    root.push(field);
-                } else {
-                    field.parent = fieldStack[fieldStack.length - 1];
-                    field.parent.children.push(field);
-                }
-
-                if (field.isObject) {
-                    fieldStack.push(field);
-                }
-
-                while (fieldStack.length > 0 &&
-                       fieldStack[fieldStack.length - 1].children.length >= 
-                       fieldStack[fieldStack.length - 1].expectedChildren) {
-                    fieldStack.pop();
-                }
-            }
-
-            function toJsonField(f) {
-                if (f.isObject) {
-                    const obj = {};
-                    if (f.children) {
-                        for (const c of f.children) {
-                            obj[c.name] = toJsonField(c);
-                        }
-                    }
-                    return obj;
-                }
-                return (f.value !== undefined) ? f.value : null;
-            }
-
-            const result = {};
-            for (const r of root) {
-                result[r.name] = toJsonField(r);
-            }
-
-            return {
-                data: result,
-                metadata: {
-                    numObjects: numMeta1,
-                    numFields: numMeta2,
-                    buildNumber: buildNumber,
-                    fileSize: buffer.byteLength
-                }
-            };
+        if (fieldData.length === padding + 4) {
+          try {
+            const view = new DataView(
+              fieldData.buffer,
+              fieldData.byteOffset + padding,
+              4,
+            );
+            const intVal = view.getInt32(0, true);
+            const floatVal = view.getFloat32(0, true);
+            if (!Number.isInteger(floatVal) && Number.isFinite(floatVal))
+              return { type: "float", value: floatVal };
+            return { type: "int", value: intVal };
+          } catch (e) {}
         }
-
-        function updateStatus(message, isError = false) {
-            const statusEl = document.getElementById('status');
-            statusEl.textContent = message;
-            statusEl.classList.remove('hidden', 'error', 'success');
-            statusEl.classList.add(isError ? 'error' : 'success');
+        return {
+          type: "raw",
+          value: `<data:${fieldData.length}b>`,
+          rawHex: bytesToHex(fieldData),
+        };
+      }
+      function decodeDSON(buffer) {
+        const bytes = new Uint8Array(buffer);
+        const reader = new BinaryReader(buffer);
+        const magic = Array.from(bytes.slice(0, 4));
+        if (magic.join(",") !== MAGIC.join(","))
+          throw new Error(
+            `Invalid magic number: ${magic.map((x) => x.toString(16).padStart(2, "0")).join(" ")}`,
+          );
+        reader.seek(0);
+        const headerInts = [];
+        for (let i = 0; i < 16; i++) headerInts.push(reader.readInt32());
+        const [
+          magicNum,
+          revision,
+          headerLength,
+          zeroes1,
+          meta1Size,
+          numMeta1,
+          meta1Offset,
+          z2a,
+          z2b,
+          z2c,
+          z2d,
+          numMeta2,
+          meta2Offset,
+          zeroes4,
+          dataLength,
+          dataOffset,
+        ] = headerInts;
+        if (headerLength !== 64)
+          throw new Error(`Invalid header length: ${headerLength}`);
+        const buildNumber = (revision >> 16) & 0xffff;
+        const meta1 = [];
+        reader.seek(meta1Offset);
+        for (let i = 0; i < numMeta1; i++)
+          meta1.push({
+            parentIndex: reader.readInt32(),
+            meta2EntryIdx: reader.readInt32(),
+            numDirectChildren: reader.readInt32(),
+            numAllChildren: reader.readInt32(),
+          });
+        const meta2 = [];
+        reader.seek(meta2Offset);
+        for (let i = 0; i < numMeta2; i++) {
+          const nameHash = reader.readInt32();
+          const offset = reader.readInt32();
+          const fieldInfo = reader.readInt32();
+          const isObject = (fieldInfo & 1) === 1;
+          const nameLen = (fieldInfo & 0b11111111100) >> 2;
+          const meta1Idx =
+            (fieldInfo & 0b1111111111111111111100000000000) >> 11;
+          meta2.push({
+            nameHash,
+            offset,
+            fieldInfo,
+            isObject,
+            nameLen,
+            meta1Idx,
+            originalIndex: i,
+          });
         }
-
-        function hideStatus() {
-            document.getElementById('status').classList.add('hidden');
+        const dataBlock = bytes.slice(dataOffset, dataOffset + dataLength);
+        const fields = [];
+        for (let i = 0; i < meta2.length; i++) {
+          const m = meta2[i];
+          let off = m.offset;
+          const name = readString(dataBlock, off, m.nameLen - 1);
+          off += m.nameLen;
+          let nextOffset = dataBlock.length;
+          for (let j = 0; j < meta2.length; j++) {
+            if (meta2[j].offset > m.offset && meta2[j].offset < nextOffset)
+              nextOffset = meta2[j].offset;
+          }
+          const rawData = dataBlock.slice(off, nextOffset);
+          const field = {
+            id: i,
+            name,
+            isObject: m.isObject,
+            meta1Idx: m.meta1Idx,
+            nameHash: m.nameHash,
+            originalFieldInfo: m.fieldInfo,
+            rawData,
+            dataStartInBlock: off,
+            dataOffset: m.offset,
+            originalIndex: m.originalIndex,
+          };
+          if (!field.isObject) {
+            const parsed = parseFieldValue(rawData, off);
+            Object.assign(field, parsed);
+          }
+          fields.push(field);
         }
-
-        function buildNavigationTree(data, parentPath = '') {
-            const tree = [];
-            const keys = Object.keys(data);
-
-            for (const key of keys) {
-                const value = data[key];
-                const path = parentPath ? `${parentPath}.${key}` : key;
-                
-                let displayValue = '';
-                if (value === null) displayValue = 'null';
-                else if (typeof value === 'object') {
-                    if (Array.isArray(value)) {
-                        displayValue = `[${value.length}]`;
-                    } else {
-                        const objKeys = Object.keys(value).length;
-                        displayValue = `{${objKeys}}`;
-                    }
-                } else {
-                    displayValue = String(value).substring(0, 30);
-                }
-
-                tree.push({
-                    name: key,
-                    path: path,
-                    value: value,
-                    displayValue: displayValue,
-                    isExpandable: typeof value === 'object' && value !== null
-                });
-            }
-
-            return tree;
+        fields.sort((a, b) => a.dataOffset - b.dataOffset);
+        const root = [];
+        const stack = [];
+        for (const field of fields) {
+          if (field.isObject) {
+            field.children = [];
+            field.expectedChildren =
+              (meta1[field.meta1Idx] &&
+                meta1[field.meta1Idx].numDirectChildren) ||
+              0;
+          }
+          if (stack.length === 0) root.push(field);
+          else {
+            field.parent = stack[stack.length - 1];
+            field.parent.children.push(field);
+          }
+          if (field.isObject) stack.push(field);
+          while (
+            stack.length > 0 &&
+            stack[stack.length - 1].children.length >=
+              stack[stack.length - 1].expectedChildren
+          )
+            stack.pop();
         }
-
-        function renderNavigationTree(data) {
-            const treeContainer = document.getElementById('navigationTree');
-            treeContainer.innerHTML = '';
-
-            const tree = buildNavigationTree(data);
-
-            for (const item of tree) {
-                const itemEl = document.createElement('div');
-                itemEl.className = 'tree-item';
-                itemEl.dataset.path = item.path;
-
-                let expandButton = '<span class="tree-expand"></span>';
-                if (item.isExpandable) {
-                    expandButton = '<span class="tree-expand">▼</span>';
-                }
-
-                itemEl.innerHTML = `${expandButton}<span class="item-name">${item.name}</span> <span style="color: #808080;">${item.displayValue}</span>`;
-
-                itemEl.addEventListener('click', () => {
-                    document.querySelectorAll('.tree-item.active').forEach(el => el.classList.remove('active'));
-                    itemEl.classList.add('active');
-                    renderEditorContent(item.value, item.path);
-                });
-
-                treeContainer.appendChild(itemEl);
-            }
+        function toJsonField(f) {
+          if (f.isObject) {
+            const obj = {};
+            for (const c of f.children || []) obj[c.name] = toJsonField(c);
+            return obj;
+          }
+          return f.value !== undefined ? f.value : null;
         }
-
-        function renderEditorContent(value, path) {
-            const editorContent = document.getElementById('editorContent');
-            const editorTitle = document.getElementById('editorTitle');
-
-            editorTitle.textContent = path || 'Root';
-
-            if (value === null) {
-                editorContent.innerHTML = '<div style="color: #808080; padding: 20px;">Value is null</div>';
-                return;
-            }
-
-            if (typeof value !== 'object') {
-                const html = `
-                    <div class="field-group">
-                        <label class="field-label">Value</label>
-                        <div class="field-value">
-                            <textarea readonly style="min-height: 100px;">${String(value).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
-                        </div>
-                    </div>
-                `;
-                editorContent.innerHTML = html;
-                return;
-            }
-
-            if (Array.isArray(value)) {
-                editorContent.innerHTML = renderDetailedValue(value, path);
-            } else {
-                editorContent.innerHTML = renderDetailedValue(value, path);
-            }
+        const data = {};
+        for (const r of root) data[r.name] = toJsonField(r);
+        return {
+          data,
+          metadata: {
+            numObjects: numMeta1,
+            numFields: numMeta2,
+            buildNumber,
+            fileSize: buffer.byteLength,
+          },
+          internal: {
+            headerInts,
+            meta1,
+            meta2,
+            fields,
+            root,
+            buffer,
+            originalBytes: bytes,
+            header: { revision, meta1Offset, meta2Offset, dataOffset },
+          },
+        };
+      }
+      function validateEditedJson(edited) {
+        const notes = [];
+        const errors = [];
+        if (!state) {
+          errors.push("No file loaded.");
+          return { ok: false, notes, errors };
         }
-
-        function renderObjectEditor(obj) {
-            const editorContent = document.getElementById('editorContent');
-            let html = '<div class="object-tree">';
-
-            for (const [key, val] of Object.entries(obj)) {
-                if (typeof val === 'object' && val !== null) {
-                    const isArray = Array.isArray(val);
-                    const itemCount = isArray ? val.length : Object.keys(val).length;
-                    const icon = isArray ? '📋' : '📦';
-
-                    html += `
-                        <div class="object-item">
-                            <div class="object-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
-                                <span class="tree-expand">▼</span>
-                                <span>${icon} ${key}</span>
-                                <span style="color: #808080; font-size: 11px;">${itemCount} items</span>
-                            </div>
-                            <div class="object-content">
-                                ${renderDetailedValue(val, key)}
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    html += `
-                        <div class="field-group">
-                            <label class="field-label">${key}</label>
-                            <div class="field-value">
-                                <input type="text" value="${val !== null ? String(val).replace(/"/g, '&quot;') : ''}" data-key="${key}">
-                            </div>
-                        </div>
-                    `;
-                }
-            }
-
-            html += '</div>';
-            editorContent.innerHTML = html;
-
-            // Add change listeners
-            editorContent.querySelectorAll('input[data-key]').forEach(input => {
-                input.addEventListener('change', () => {
-                    isModified = true;
-                    document.getElementById('resetBtn').disabled = false;
-                });
-            });
+        function visitObject(obj, field, path) {
+          if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+            errors.push(`${path}: expected object`);
+            return;
+          }
+          const expected = (field.children || []).map((c) => c.name);
+          const actual = Object.keys(obj);
+          for (const k of expected) {
+            if (!Object.prototype.hasOwnProperty.call(obj, k))
+              errors.push(`${path}.${k}: missing key`);
+          }
+          for (const k of actual) {
+            if (!expected.includes(k))
+              errors.push(
+                `${path}.${k}: extra key. Adding/removing keys is not supported.`,
+              );
+          }
+          for (const child of field.children || []) {
+            const p = path ? `${path}.${child.name}` : child.name;
+            if (child.isObject) visitObject(obj[child.name], child, p);
+            else validateValue(obj[child.name], child, p);
+          }
         }
-
-        function renderDetailedValue(val, key, depth = 0) {
-            const indent = 'margin-left: ' + (depth * 15) + 'px;';
-
-            if (val === null) {
-                return '<div style="color: #808080; ' + indent + '">null</div>';
-            }
-
-            if (Array.isArray(val)) {
-                if (val.length === 0) {
-                    return '<div style="color: #808080; ' + indent + '">Empty array</div>';
-                }
-
-                const firstItem = val[0];
-                if (typeof firstItem === 'object' && firstItem !== null && !Array.isArray(firstItem)) {
-                    // Array of objects - render full table
-                    const keys = new Set();
-                    val.forEach(item => {
-                        if (typeof item === 'object') {
-                            Object.keys(item).forEach(k => keys.add(k));
-                        }
-                    });
-
-                    let html = '<table class="array-table" style="margin: 10px 0; ' + indent + '"><thead><tr>';
-                    html += '<th>#</th>';
-                    Array.from(keys).forEach(k => {
-                        html += `<th>${k}</th>`;
-                    });
-                    html += '</tr></thead><tbody>';
-
-                    val.forEach((item, idx) => {
-                        html += '<tr style="cursor: pointer;" onclick="this.classList.toggle(\'expanded\')">';
-                        html += `<td><strong>${idx}</strong></td>`;
-                        Array.from(keys).forEach(k => {
-                            const v = item[k];
-                            let displayVal = '';
-                            if (v === null) {
-                                displayVal = '<span style="color: #808080;">null</span>';
-                            } else if (typeof v === 'object') {
-                                if (Array.isArray(v)) {
-                                    displayVal = `<span style="color: #808080;">[${v.length}]</span>`;
-                                } else {
-                                    displayVal = `<span style="color: #808080;">{${Object.keys(v).length}}</span>`;
-                                }
-                            } else {
-                                displayVal = String(v).substring(0, 50);
-                            }
-                            html += `<td>${displayVal}</td>`;
-                        });
-                        html += '</tr>';
-                    });
-
-                    html += '</tbody></table>';
-                    return html;
-                } else if (typeof firstItem === 'object' && Array.isArray(firstItem)) {
-                    // Array of arrays
-                    let html = '<div style="' + indent + '">';
-                    val.forEach((arr, idx) => {
-                        html += `<div style="padding: 8px; background: rgba(0,0,0,0.2); margin: 5px 0; border-radius: 3px;">
-                            <span style="color: #ff8787; font-weight: bold;">[${idx}]</span> Array(${arr.length})
-                            ${renderDetailedValue(arr, '', depth + 1)}
-                        </div>`;
-                    });
-                    html += '</div>';
-                    return html;
-                } else {
-                    // Array of primitives
-                    let html = '<div style="margin: 10px 0; ' + indent + '">';
-                    val.forEach((item, idx) => {
-                        html += `<div style="padding: 6px 10px; background: rgba(0,0,0,0.2); margin: 3px 0; border-radius: 3px; font-family: monospace; font-size: 12px;">
-                            <span style="color: #808080;">[${idx}]</span> <span style="color: #e0e0e0;">${item !== null ? String(item).substring(0, 200) : 'null'}</span>
-                        </div>`;
-                    });
-                    html += '</div>';
-                    return html;
-                }
-            }
-
-            if (typeof val === 'object') {
-                // Render nested object recursively
-                let html = '<div style="margin: 10px 0; padding: 10px; background: rgba(0,0,0,0.15); border-left: 3px solid #ff6b6b; border-radius: 3px; ' + indent + '">';
-                const keys = Object.keys(val);
-                
-                keys.forEach(k => {
-                    const v = val[k];
-                    html += '<div style="margin: 8px 0;">';
-                    
-                    if (v === null) {
-                        html += `<div style="padding: 6px 8px;"><span style="color: #ff8787; font-weight: bold;">${k}:</span> <span style="color: #808080;">null</span></div>`;
-                    } else if (typeof v === 'object') {
-                        if (Array.isArray(v)) {
-                            if (v.length === 0) {
-                                html += `<div style="padding: 6px 8px;"><span style="color: #ff8787; font-weight: bold;">${k}:</span> <span style="color: #808080;">[]</span></div>`;
-                            } else {
-                                html += `<div style="padding: 6px 8px; cursor: pointer; background: rgba(255,107,107,0.1); border-radius: 3px;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
-                                    <span style="color: #ff8787; font-weight: bold;">▼ ${k}:</span> <span style="color: #808080;">Array(${v.length})</span>
-                                </div>
-                                <div style="display: block;">
-                                    ${renderDetailedValue(v, k, depth + 1)}
-                                </div>`;
-                            }
-                        } else {
-                            const objSize = Object.keys(v).length;
-                            html += `<div style="padding: 6px 8px; cursor: pointer; background: rgba(255,107,107,0.1); border-radius: 3px;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
-                                <span style="color: #ff8787; font-weight: bold;">▼ ${k}:</span> <span style="color: #808080;">Object(${objSize})</span>
-                            </div>
-                            <div style="display: block;">
-                                ${renderDetailedValue(v, k, depth + 1)}
-                            </div>`;
-                        }
-                    } else {
-                        html += `<div style="padding: 6px 8px;"><span style="color: #ff8787; font-weight: bold;">${k}:</span> <span style="color: #e0e0e0; font-family: monospace;">${String(v)}</span></div>`;
-                    }
-                    
-                    html += '</div>';
-                });
-
-                html += '</div>';
-                return html;
-            }
-
-            return `<div style="color: #e0e0e0; font-family: monospace; ' + indent + '">${String(val)}</div>`;
+        function validateValue(v, field, path) {
+          switch (field.type) {
+            case "bool":
+              if (typeof v !== "boolean")
+                errors.push(`${path}: expected boolean`);
+              break;
+            case "int":
+              if (!Number.isInteger(v) || v < -2147483648 || v > 2147483647)
+                errors.push(`${path}: expected int32`);
+              break;
+            case "float":
+              if (typeof v !== "number" || !Number.isFinite(v))
+                errors.push(`${path}: expected finite number for float32`);
+              break;
+            case "string":
+              if (typeof v !== "string")
+                errors.push(`${path}: expected string`);
+              break;
+            case "embeddedDSON":
+              if (typeof v !== "object" || v === null || Array.isArray(v))
+                errors.push(`${path}: expected embedded object`);
+              break;
+            case "empty":
+              if (v !== null)
+                notes.push(
+                  `${path}: original value was empty/null; exported as empty raw data.`,
+                );
+              break;
+            case "byte":
+              if (!Number.isInteger(v) || v < 0 || v > 255)
+                errors.push(`${path}: expected byte 0-255`);
+              break;
+            case "byteChar":
+              if (typeof v !== "string" || v.length !== 1)
+                errors.push(`${path}: expected single character`);
+              break;
+            default:
+              notes.push(
+                `${path}: raw/unknown field will keep original bytes; JSON value is ignored.`,
+              );
+          }
         }
-
-        function renderEditorTitle(title) {
-            const editorTitle = document.getElementById('editorTitle');
-            editorTitle.textContent = title || 'Root';
+        const topExpected = state.internal.root.map((r) => r.name);
+        const topActual = Object.keys(edited);
+        for (const k of topExpected) {
+          if (!Object.prototype.hasOwnProperty.call(edited, k))
+            errors.push(`${k}: missing top-level key`);
         }
-
-        async function handleFile(file) {
-            try {
-                updateStatus('Decoding file...', false);
-                const buffer = await file.arrayBuffer();
-                const result = decodeDSON(buffer);
-                
-                decodedData = result.data;
-                originalData = JSON.parse(JSON.stringify(result.data));
-                currentFileName = file.name.replace(/\.[^/.]+$/, '.json');
-                currentMetadata = result.metadata;
-                isModified = false;
-
-                // Update file info
-                document.getElementById('infoFileName').textContent = file.name;
-                document.getElementById('infoFileSize').textContent = (result.metadata.fileSize / 1024).toFixed(2) + ' KB';
-                document.getElementById('infoObjectCount').textContent = result.metadata.numObjects;
-                document.getElementById('infoFieldCount').textContent = result.metadata.numFields;
-
-                // Show editor
-                document.getElementById('uploadArea').classList.add('hidden');
-                document.getElementById('editorContainer').classList.add('visible');
-                document.getElementById('fileInfoPanel').style.display = 'block';
-
-                // Build navigation
-                renderNavigationTree(decodedData);
-
-                // Enable buttons
-                document.getElementById('downloadBtn').disabled = false;
-                document.getElementById('copyBtn').disabled = false;
-                document.getElementById('clearBtn').disabled = false;
-
-                updateStatus(`✓ Decoded! (${result.metadata.numFields} fields)`, false);
-                setTimeout(hideStatus, 3000);
-            } catch (error) {
-                updateStatus(`✗ Error: ${error.message}`, true);
-                console.error(error);
-            }
+        for (const k of topActual) {
+          if (!topExpected.includes(k))
+            errors.push(`${k}: extra top-level key`);
         }
+        for (const r of state.internal.root) {
+          if (r.isObject) visitObject(edited[r.name], r, r.name);
+          else validateValue(edited[r.name], r, r.name);
+        }
+        return { ok: errors.length === 0, notes, errors };
+      }
+      function makeValueBytes(field, value, dataStartInBlock) {
+        if (field.type === "raw") return field.rawData;
+        if (field.type === "empty") return new Uint8Array(0);
+        if (field.type === "bool") return new Uint8Array([value ? 1 : 0]);
+        if (field.type === "byte") return new Uint8Array([value & 255]);
+        if (field.type === "byteChar")
+          return new Uint8Array([value.charCodeAt(0) & 255]);
+        const pad = new Uint8Array(getAlignmentPadding(dataStartInBlock));
+        if (field.type === "int") return concatArrays([pad, i32Bytes(value)]);
+        if (field.type === "float") return concatArrays([pad, f32Bytes(value)]);
+        if (field.type === "string") {
+          const s = utf8Bytes(value);
+          return concatArrays([
+            pad,
+            i32Bytes(s.length + 1),
+            s,
+            new Uint8Array([0]),
+          ]);
+        }
+        if (field.type === "embeddedDSON") {
+          // Embedded DSON recoding is conservative: keep original embedded binary unless the user did not change it.
+          // This avoids corrupting nested save objects until full nested structure replacement is implemented.
+          return field.rawData;
+        }
+        return field.rawData;
+      }
+      function buildDSON(edited) {
+        const validation = validateEditedJson(edited);
+        if (!validation.ok)
+          throw new Error(
+            "Cannot export: JSON structure/type validation failed.",
+          );
+        const headerInts = state.internal.headerInts.slice();
+        const meta1 = state.internal.meta1;
+        const fields = state.internal.fields
+          .slice()
+          .sort((a, b) => a.dataOffset - b.dataOffset);
+        const meta1Offset = headerInts[6];
+        const meta2Offset = headerInts[12];
+        const originalDataOffset = headerInts[15];
+        const dataParts = [];
+        const newMeta2 = [];
+        let pos = 0;
+        function valueAtPath(rootField, editedRoot) {
+          return editedRoot[rootField.name];
+        }
+        function getValueForField(field) {
+          const names = [];
+          let f = field;
+          while (f) {
+            names.unshift(f.name);
+            f = f.parent;
+          }
+          let v = edited;
+          for (const n of names) v = v[n];
+          return v;
+        }
+        for (const field of fields) {
+          const nameBytes = utf8Bytes(field.name);
+          const namePart = concatArrays([nameBytes, new Uint8Array([0])]);
+          const fieldOffset = pos;
+          dataParts.push(namePart);
+          pos += namePart.length;
+          if (!field.isObject) {
+            const v = getValueForField(field);
+            const valueBytes = makeValueBytes(field, v, pos);
+            dataParts.push(valueBytes);
+            pos += valueBytes.length;
+          }
+          const nameLen = nameBytes.length + 1;
+          const fieldInfo =
+            (field.isObject ? 1 : 0) |
+            ((nameLen & 0x1ff) << 2) |
+            ((field.meta1Idx & 0xfffff) << 11);
+          newMeta2[field.originalIndex] = {
+            nameHash: stringHash(field.name) | 0,
+            offset: fieldOffset,
+            fieldInfo,
+          };
+        }
+        const newData = concatArrays(dataParts);
+        headerInts[14] = newData.length;
+        headerInts[15] = originalDataOffset;
+        const outLen = originalDataOffset + newData.length;
+        const out = new ArrayBuffer(outLen);
+        const view = new DataView(out);
+        let o = 0;
+        for (const n of headerInts) {
+          view.setInt32(o, n, true);
+          o += 4;
+        }
+        o = meta1Offset;
+        for (const m of meta1) {
+          view.setInt32(o, m.parentIndex, true);
+          view.setInt32(o + 4, m.meta2EntryIdx, true);
+          view.setInt32(o + 8, m.numDirectChildren, true);
+          view.setInt32(o + 12, m.numAllChildren, true);
+          o += 16;
+        }
+        o = meta2Offset;
+        for (let i = 0; i < newMeta2.length; i++) {
+          const m = newMeta2[i];
+          view.setInt32(o, m.nameHash, true);
+          view.setInt32(o + 4, m.offset, true);
+          view.setInt32(o + 8, m.fieldInfo, true);
+          o += 12;
+        }
+        new Uint8Array(out).set(newData, originalDataOffset);
+        return out;
+      }
+      function downloadBlob(data, name, type) {
+        const blob = new Blob([data], { type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
 
-        // Event Listeners
-        document.getElementById('uploadArea').addEventListener('click', () => {
-            document.getElementById('fileInput').click();
+      let rosterData = null;
+      let selectedHeroId = null;
+      let showAdvanced = false;
+      let isRosterMode = false;
+      let currentSkillMode = "combat";
+      const extraQuirkSlotsByHero = {};
+      const CLASS_OPTIONS = [
+        "abomination",
+        "antiquarian",
+        "arbalest",
+        "bounty_hunter",
+        "crusader",
+        "flagellant",
+        "grave_robber",
+        "hellion",
+        "highwayman",
+        "houndmaster",
+        "jester",
+        "leper",
+        "man_at_arms",
+        "occultist",
+        "plague_doctor",
+        "shieldbreaker",
+        "vestal",
+      ];
+      function intBitsToFloat(i) {
+        const b = new ArrayBuffer(4);
+        const v = new DataView(b);
+        v.setInt32(0, Number(i) || 0, true);
+        return v.getFloat32(0, true);
+      }
+      function floatToIntBits(f) {
+        const b = new ArrayBuffer(4);
+        const v = new DataView(b);
+        v.setFloat32(0, Number(f) || 0, true);
+        return v.getInt32(0, true);
+      }
+      function tinyFloatToInt(v) {
+        if (v === 0 || v === null || v === undefined) return 0;
+        if (Math.abs(v) < 1e-35) {
+          return Math.round(v / 1.401298464324817e-45);
+        }
+        return v;
+      }
+      function intToTinyFloat(n) {
+        return (Number(n) || 0) * 1.401298464324817e-45;
+      }
+      function getHeroesObj() {
+        return rosterData?.base_root?.heroes || {};
+      }
+      function isRosterData(data) {
+        return !!(
+          data &&
+          typeof data === "object" &&
+          data.base_root &&
+          typeof data.base_root === "object" &&
+          data.base_root.heroes &&
+          typeof data.base_root.heroes === "object" &&
+          !Array.isArray(data.base_root.heroes)
+        );
+      }
+      function setAdvancedVisible(visible) {
+        showAdvanced = visible;
+        document.getElementById("advancedJson").classList.toggle("hidden", !visible);
+        document.getElementById("advancedBtn").textContent = visible ? "Roster UI" : "Advanced JSON";
+      }
+      function getHeroRoot(id) {
+        return getHeroesObj()[id]?.hero_file_data?.raw_data?.base_root || null;
+      }
+      function heroSummary(id) {
+        const h = getHeroRoot(id) || {};
+        const a = h.actor || {};
+        return {
+          id,
+          name: a.name || "(unnamed)",
+          cls: h.heroClass || "",
+          weapon: tinyFloatToInt(h.weapon_rank || 0),
+          armour: tinyFloatToInt(h.armour_rank || 0),
+          stress: intBitsToFloat(h.m_Stress || 0),
+          hp: intBitsToFloat(a.current_hp || 0),
+          quirks: Object.keys(h.quirks || {}).length,
+          trinkets: Object.keys(h.trinkets?.items || {})
+            .map((k) => h.trinkets.items[k]?.id)
+            .filter(Boolean),
+        };
+      }
+      function selectHero(id) {
+        selectedHeroId = String(id);
+        renderHeroList();
+        renderHeroEditor();
+      }
+      function renderHeroList() {
+        const list = document.getElementById("heroList");
+        const q = (
+          document.getElementById("heroSearch").value || ""
+        ).toLowerCase();
+        list.innerHTML = "";
+        const ids = Object.keys(getHeroesObj()).sort(
+          (a, b) => Number(a) - Number(b),
+        );
+        for (const id of ids) {
+          const s = heroSummary(id);
+          const text = `${id} ${s.name} ${s.cls}`.toLowerCase();
+          if (q && !text.includes(q)) continue;
+          const div = document.createElement("div");
+          div.className =
+            "hero-card" + (id === selectedHeroId ? " active" : "");
+          div.onclick = () => selectHero(id);
+          div.innerHTML = `<div class="hero-no">#${id}</div><div class="hero-name">${escapeHtml(s.name)}</div><div class="hero-class">${escapeHtml(s.cls || "unknown")}</div><div class="hero-rank weapon" title="Weapon Rank"><span class="rank-icon">⚔</span><span>${escapeHtml(s.weapon)}</span></div><div class="hero-rank armour" title="Armour Rank"><span class="rank-icon">🛡</span><span>${escapeHtml(s.armour)}</span></div>`;
+          list.appendChild(div);
+        }
+      }
+      function escapeHtml(s) {
+        return String(s ?? "").replace(
+          /[&<>"']/g,
+          (m) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#039;",
+            })[m],
+        );
+      }
+      function fmt(n) {
+        return Number.isFinite(n)
+          ? Number(n).toFixed(Number.isInteger(n) ? 0 : 2)
+          : String(n);
+      }
+      function input(id, label, value, small = "", type = "text") {
+        return `<div class="field"><label for="${id}">${label}</label><input id="${id}" type="${type}" value="${escapeHtml(value)}" />${small ? `<small>${small}</small>` : ""}</div>`;
+      }
+      function select(id, label, value, opts) {
+        return `<div class="field"><label for="${id}">${label}</label><select id="${id}">${opts.map((o) => `<option value="${escapeHtml(o)}" ${o === value ? "selected" : ""}>${escapeHtml(o)}</option>`).join("")}</select></div>`;
+      }
+      function checkbox(id, label, checked, small = "") {
+        return `<div class="field check-field"><label><input id="${id}" type="checkbox" ${checked ? "checked" : ""}/> <span>${label}</span></label>${small ? `<small>${small}</small>` : ""}</div>`;
+      }
+      function isPositiveQuirk(name, obj, index) {
+        const v = obj || {};
+        if (typeof v.is_positive === "boolean") return v.is_positive;
+        if (typeof v.positive === "boolean") return v.positive;
+        if (typeof v.is_negative === "boolean") return !v.is_negative;
+        if (typeof v.negative === "boolean") return !v.negative;
+        if (typeof v.type === "string") {
+          const t = v.type.toLowerCase();
+          if (t.includes("positive")) return true;
+          if (t.includes("negative")) return false;
+        }
+        if (typeof v.category === "string") {
+          const t = v.category.toLowerCase();
+          if (t.includes("positive")) return true;
+          if (t.includes("negative")) return false;
+        }
+        return index < 5;
+      }
+      function renderQuirkSlot(entry, slotNo) {
+        const name = entry?.name || "";
+        const obj = entry?.obj || null;
+        const safeName = escapeHtml(name);
+        const emptyClass = name ? "" : " empty";
+        const locked = obj?.is_locked ? "checked" : "";
+        const isNew = obj?.is_new ? "checked" : "";
+        const viewed = obj?.replaces_quirk_viewed ? "checked" : "";
+        const deleteDisabled = name ? "" : "disabled";
+        const lockIcon = `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 10V8a5 5 0 0 1 10 0v2" stroke-width="2" stroke-linecap="round"/>
+            <rect x="5" y="10" width="14" height="10" rx="1.5" stroke-width="2"/>
+            <path d="M12 14v3" stroke-width="2" stroke-linecap="round"/>
+          </svg>`;
+        const newIcon = `
+          <svg class="fill-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2.5l2.6 6.9 6.9 2.6-6.9 2.6L12 21.5l-2.6-6.9L2.5 12l6.9-2.6L12 2.5z"/>
+          </svg>`;
+        const viewedIcon = `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="2.5" stroke-width="2"/>
+          </svg>`;
+
+        return `
+          <div class="quirk-slot${emptyClass}">
+            <div class="quirk-name-row">
+              <input
+                class="quirk-name-input"
+                data-quirk-slot="${slotNo}"
+                data-original-quirk="${safeName}"
+                value="${safeName}"
+                placeholder="Empty quirk"
+                spellcheck="false"
+              />
+              <button
+                class="quirk-delete-btn"
+                type="button"
+                title="Delete quirk"
+                data-delete-quirk-slot="${slotNo}"
+                data-delete-quirk="${safeName}"
+                ${deleteDisabled}
+              >×</button>
+            </div>
+            <div class="quirk-flags">
+              <label class="quirk-toggle" title="Locked">
+                <input data-quirk-slot="${slotNo}" data-prop="is_locked" type="checkbox" ${locked}>
+                <span class="mark">${lockIcon}</span>
+              </label>
+              <label class="quirk-toggle" title="New">
+                <input data-quirk-slot="${slotNo}" data-prop="is_new" type="checkbox" ${isNew}>
+                <span class="mark">${newIcon}</span>
+              </label>
+              <label class="quirk-toggle" title="Viewed">
+                <input data-quirk-slot="${slotNo}" data-prop="replaces_quirk_viewed" type="checkbox" ${viewed}>
+                <span class="mark">${viewedIcon}</span>
+              </label>
+            </div>
+          </div>`;
+      }
+      function renderQuirksTab(quirks) {
+        const entries = Object.keys(quirks || {}).map((name, index) => ({
+          name,
+          obj: quirks[name],
+          index,
+        }));
+        const extraSlots = selectedHeroId ? extraQuirkSlotsByHero[selectedHeroId] || 0 : 0;
+        const slotCount = Math.max(10, entries.length + extraSlots);
+        const slots = Array.from(
+          { length: slotCount },
+          (_, index) => entries[index] || { name: "", obj: null, index },
+        );
+        const countText = `${entries.length}/${slotCount}`;
+
+        return `<div class="basic-quirks"><div class="quirk-section"><div class="quirk-section-title"><span class="label">Quirks</span><div class="quirk-section-actions"><span class="quirk-count">${countText}</span><button class="quirk-add-btn" id="addQuirkSlotBtn" type="button" title="Add empty quirk slot">+</button></div></div><div class="quirk-slots">${slots.map((entry, i) => renderQuirkSlot(entry, i + 1)).join("")}</div></div></div>`;
+      }
+      function renderBasicTrinkets(trinkets) {
+        const keys = Object.keys(trinkets || {}).slice(0, 2);
+        const rows = Array.from({ length: 2 }, (_, i) => {
+          const k = keys[i];
+          if (!k) {
+            return `<div class="trinket-row empty"><div class="field"><label>Slot</label><input disabled value="${i + 1}"></div><div class="field"><label>ID</label><input disabled value="Empty"></div><div class="field"><label>Type</label><input disabled value="-"></div></div>`;
+          }
+          return `<div class="trinket-row"><div class="field"><label>Slot</label><input disabled value="${escapeHtml(k)}"></div><div class="field"><label>ID</label><input data-trinket="${escapeHtml(k)}" data-prop="id" value="${escapeHtml(trinkets[k].id || "")}"></div><div class="field"><label>Type</label><input data-trinket="${escapeHtml(k)}" data-prop="type" value="${escapeHtml(trinkets[k].type || "trinket")}"></div></div>`;
+        }).join("");
+        return `<div class="basic-trinkets"><div class="section trinket-section"><div class="trinket-section-title"><span class="label">Trinkets</span><span class="quirk-count">${keys.length}/2</span></div><div class="trinket-list">${rows}</div></div></div>`;
+      }
+
+      function renderBasicSkills(combat, camp) {
+        const combatKeys = Object.keys(combat || {});
+        const campKeys = Object.keys(camp || {});
+        const activeKeys =
+          currentSkillMode === "camping" ? campKeys : combatKeys;
+        const skillSquares = (keys) =>
+          Array.from({ length: 7 }, (_, i) => {
+            const skill = keys[i];
+            return skill
+              ? `<div class="basic-skill-square filled" title="${escapeHtml(skill)}">${i + 1}</div>`
+              : `<div class="basic-skill-square empty" title="Empty skill slot">${i + 1}</div>`;
+          }).join("");
+        return `<div class="basic-skills"><div class="section skills-section"><div class="skills-bar-head"><span class="skills-title-label">Skills</span><div class="skill-mode-tabs"><button class="skill-mode-btn ${currentSkillMode === "combat" ? "active" : ""}" type="button" data-skill-mode="combat">Combat</button><button class="skill-mode-btn ${currentSkillMode === "camping" ? "active" : ""}" type="button" data-skill-mode="camping">Camping</button></div><span class="quirk-count"><span id="skillCountText">${activeKeys.length}</span>/7</span></div><div id="skill-panel" class="basic-skill-grid" data-active-skill-mode="${currentSkillMode}">${skillSquares(activeKeys)}</div></div></div>`;
+      }
+      function renderHeroEditor() {
+        const wrap = document.getElementById("heroEditor");
+        if (!selectedHeroId) {
+          document.getElementById("emptyHero").classList.remove("hidden");
+          wrap.classList.add("hidden");
+          return;
+        }
+        document.getElementById("emptyHero").classList.add("hidden");
+        wrap.classList.remove("hidden");
+        const h = getHeroRoot(selectedHeroId);
+        const a = h.actor || {};
+        const quirks = h.quirks || {};
+        const combat = h.skills?.selected_combat_skills || {};
+        const camp = h.skills?.selected_camping_skills || {};
+        const trinkets = h.trinkets?.items || {};
+        const clsOpts = Array.from(
+          new Set([h.heroClass, ...CLASS_OPTIONS].filter(Boolean)),
+        ).sort();
+        wrap.innerHTML = `
+ <div class="editor-head"><div><div class="hero-title">${escapeHtml(a.name || "(unnamed)")}</div><div class="hero-subtitle">Hero #${selectedHeroId} · ${escapeHtml(h.heroClass || "")}</div></div></div>
+ <div id="tab-basic" class="tab-content">
+   <div class="basic-layout-grid">
+     <div class="basic-left-stack">
+       <div class="basic-card hero-identity-card">
+         <h3>Hero Identity</h3>
+         <div class="basic-card-grid">
+           ${input("f_name", "Hero Name", a.name || "")}
+           ${select("f_class", "Hero Class", h.heroClass || "", clsOpts)}
+         </div>
+       </div>
+       ${renderQuirksTab(quirks)}
+     </div>
+     <div class="basic-right-stack">
+       <div class="basic-card gear-rank-card">
+         <h3>Gear Rank</h3>
+         <div class="basic-card-grid">
+           ${input("f_weapon", "Weapon Rank", tinyFloatToInt(h.weapon_rank || 0), "", "number")}
+           ${input("f_armour", "Armour Rank", tinyFloatToInt(h.armour_rank || 0), "", "number")}
+         </div>
+       </div>
+       <div class="basic-card core-stats-card">
+         <h3>Core Stats</h3>
+         <div class="basic-card-grid three">
+           ${input("f_resolve", "Resolve XP / Level", tinyFloatToInt(h.resolveXp || 0), "", "number")}
+           ${input("f_stress", "Stress", fmt(intBitsToFloat(h.m_Stress || 0)), "", "number")}
+           ${input("f_hp", "Current HP", fmt(intBitsToFloat(a.current_hp || 0)), "", "number")}
+         </div>
+       </div>
+       ${renderBasicSkills(combat, camp)}
+       ${renderBasicTrinkets(trinkets)}
+       <div class="basic-card flags-card">
+         <div class="basic-card-grid checks">
+           ${checkbox("f_combat_ready", "Combat Ready", !!a.combat_ready)}
+           ${checkbox("f_deaths_door", "Visited Death Door", !!h.visited_deaths_door)}
+           ${checkbox("f_heart", "Had Heart Attack", !!h.has_had_heart_attack)}
+           ${checkbox("f_town_event", "From Town Event", !!h.is_from_town_event)}
+         </div>
+       </div>
+     </div>
+   </div>
+ </div>
+ `;
+        wrap.querySelectorAll(".skill-mode-btn").forEach(
+          (btn) =>
+            (btn.onclick = () => {
+              currentSkillMode = btn.dataset.skillMode;
+              applyHeroChanges({ quiet: true });
+              renderHeroEditor();
+            }),
+        );
+
+        document.getElementById("addQuirkSlotBtn")?.addEventListener("click", addEmptyQuirkSlot);
+        wrap.querySelectorAll(".quirk-delete-btn").forEach((btn) => {
+          btn.addEventListener("click", () => deleteQuirkFromSlot(btn));
+        });
+        wrap.querySelectorAll(".quirk-name-input").forEach((inputEl) => {
+          inputEl.addEventListener("change", () => commitQuirkNameInput(inputEl));
+          inputEl.addEventListener("blur", () => commitQuirkNameInput(inputEl));
+        });
+      }
+      function makeDefaultQuirk() {
+        return {
+          is_new: false,
+          is_locked: false,
+          mission_count: 0,
+          replaces_quirk: 0,
+          replaces_quirk_viewed: false,
+          evolution_duration_remaining: 0,
+        };
+      }
+
+      function normalizeQuirkName(name) {
+        return (name || "").trim();
+      }
+
+      function getQuirkSlotNames() {
+        const h = selectedHeroId ? getHeroRoot(selectedHeroId) : null;
+        const slotNames = {};
+
+        document.querySelectorAll(".quirk-name-input").forEach((el) => {
+          const slot = el.dataset.quirkSlot;
+          const originalName = normalizeQuirkName(el.dataset.originalQuirk);
+          const typedName = normalizeQuirkName(el.value);
+
+          // During typing, keep using the committed/original name so every
+          // partial letter does not create a new quirk in the JSON.
+          if (h?.quirks?.[originalName]) {
+            slotNames[slot] = originalName;
+          } else if (h?.quirks?.[typedName]) {
+            slotNames[slot] = typedName;
+          } else {
+            slotNames[slot] = typedName;
+          }
         });
 
-        document.getElementById('uploadArea').addEventListener('dragover', (e) => {
-            e.preventDefault();
-            document.getElementById('uploadArea').classList.add('dragover');
-        });
+        return slotNames;
+      }
 
-        document.getElementById('uploadArea').addEventListener('dragleave', () => {
-            document.getElementById('uploadArea').classList.remove('dragover');
-        });
+      function commitQuirkNameInput(inputEl) {
+        if (!selectedHeroId || !inputEl) return;
 
-        document.getElementById('uploadArea').addEventListener('drop', (e) => {
-            e.preventDefault();
-            document.getElementById('uploadArea').classList.remove('dragover');
-            if (e.dataTransfer.files.length > 0) {
-                handleFile(e.dataTransfer.files[0]);
-            }
-        });
+        const h = getHeroRoot(selectedHeroId);
+        if (!h) return;
 
-        document.getElementById('fileInput').addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleFile(e.target.files[0]);
-            }
-        });
+        h.quirks = h.quirks || {};
 
-        document.getElementById('downloadBtn').addEventListener('click', () => {
-            if (!decodedData) return;
-            const json = JSON.stringify(decodedData, null, 2);
-            const blob = new Blob([json], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = currentFileName;
-            a.click();
-            URL.revokeObjectURL(url);
-            updateStatus('✓ Downloaded!', false);
-            setTimeout(hideStatus, 2000);
-        });
+        const originalName = normalizeQuirkName(inputEl.dataset.originalQuirk);
+        const newName = normalizeQuirkName(inputEl.value);
 
-        document.getElementById('copyBtn').addEventListener('click', async () => {
-            if (!decodedData) return;
-            const json = JSON.stringify(decodedData, null, 2);
-            try {
-                await navigator.clipboard.writeText(json);
-                updateStatus('✓ Copied to clipboard!', false);
-                setTimeout(hideStatus, 2000);
-            } catch (err) {
-                updateStatus('✗ Failed to copy', true);
-            }
-        });
+        if (!originalName && !newName) return;
 
-        document.getElementById('resetBtn').addEventListener('click', () => {
-            decodedData = JSON.parse(JSON.stringify(originalData));
-            isModified = false;
-            document.getElementById('resetBtn').disabled = true;
-            renderNavigationTree(decodedData);
-            document.getElementById('editorContent').innerHTML = '';
-            updateStatus('✓ Changes reset', false);
-            setTimeout(hideStatus, 2000);
-        });
+        if (!originalName && newName) {
+          if (!h.quirks[newName]) h.quirks[newName] = makeDefaultQuirk();
+          inputEl.dataset.originalQuirk = newName;
+          updateQuirkDeleteButton(inputEl, newName);
+          document.getElementById("jsonEditor").value = JSON.stringify(rosterData, null, 2);
+          renderHeroList();
+          return;
+        }
 
-        document.getElementById('clearBtn').addEventListener('click', () => {
-            decodedData = null;
-            originalData = null;
-            isModified = false;
-            document.getElementById('uploadArea').classList.remove('hidden');
-            document.getElementById('editorContainer').classList.remove('visible');
-            document.getElementById('fileInput').value = '';
-            document.getElementById('navigationTree').innerHTML = '';
-            document.getElementById('editorContent').innerHTML = '';
-            document.getElementById('downloadBtn').disabled = true;
-            document.getElementById('copyBtn').disabled = true;
-            document.getElementById('resetBtn').disabled = true;
-            hideStatus();
-        });
+        if (originalName && !newName) {
+          delete h.quirks[originalName];
+          inputEl.dataset.originalQuirk = "";
+          updateQuirkDeleteButton(inputEl, "");
+          document.getElementById("jsonEditor").value = JSON.stringify(rosterData, null, 2);
+          renderHeroList();
+          renderHeroEditor();
+          return;
+        }
 
-        document.getElementById('searchBox').addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            const items = document.querySelectorAll('.tree-item');
+        if (originalName !== newName && h.quirks[originalName]) {
+          const existingValue = h.quirks[originalName];
+          delete h.quirks[originalName];
+          h.quirks[newName] = existingValue;
+          inputEl.dataset.originalQuirk = newName;
+          updateQuirkDeleteButton(inputEl, newName);
+          document.getElementById("jsonEditor").value = JSON.stringify(rosterData, null, 2);
+          renderHeroList();
+        }
+      }
 
-            items.forEach(item => {
-                const text = item.textContent.toLowerCase();
-                item.style.display = text.includes(searchTerm) ? 'block' : 'none';
-            });
+      function updateQuirkDeleteButton(inputEl, quirkName) {
+        const slot = inputEl.dataset.quirkSlot;
+        const button = document.querySelector(`.quirk-delete-btn[data-delete-quirk-slot="${slot}"]`);
+        if (!button) return;
+
+        button.dataset.deleteQuirk = quirkName;
+        button.disabled = !quirkName;
+      }
+
+      function commitAllQuirkNameInputs() {
+        document.querySelectorAll(".quirk-name-input").forEach(commitQuirkNameInput);
+      }
+
+      function addEmptyQuirkSlot() {
+        if (!selectedHeroId) return;
+        applyHeroChanges({ quiet: true });
+        extraQuirkSlotsByHero[selectedHeroId] = (extraQuirkSlotsByHero[selectedHeroId] || 0) + 1;
+        renderHeroEditor();
+      }
+
+      function deleteQuirkFromSlot(button) {
+        if (!selectedHeroId) return;
+        const h = getHeroRoot(selectedHeroId);
+        if (!h?.quirks) return;
+
+        const slot = button.dataset.deleteQuirkSlot;
+        const input = document.querySelector(`.quirk-name-input[data-quirk-slot="${slot}"]`);
+        const originalName = normalizeQuirkName(button.dataset.deleteQuirk || input?.dataset.originalQuirk);
+        const currentName = normalizeQuirkName(input?.value);
+        const nameToDelete = h.quirks[currentName] ? currentName : originalName;
+
+        if (nameToDelete && h.quirks[nameToDelete]) {
+          delete h.quirks[nameToDelete];
+        }
+
+        document.getElementById("jsonEditor").value = JSON.stringify(rosterData, null, 2);
+        renderHeroList();
+        renderHeroEditor();
+      }
+
+      function applyHeroChanges(options = {}) {
+        if (!selectedHeroId) return;
+        const h = getHeroRoot(selectedHeroId);
+        const a = h.actor || (h.actor = {});
+        const val = (id) => document.getElementById(id)?.value;
+        const checked = (id) => !!document.getElementById(id)?.checked;
+        if (document.getElementById("f_name")) a.name = val("f_name");
+        if (document.getElementById("f_class")) h.heroClass = val("f_class");
+        if (document.getElementById("f_stress"))
+          h.m_Stress = floatToIntBits(parseFloat(val("f_stress") || 0));
+        if (document.getElementById("f_hp"))
+          a.current_hp = floatToIntBits(parseFloat(val("f_hp") || 0));
+        if (document.getElementById("f_weapon"))
+          h.weapon_rank = intToTinyFloat(parseInt(val("f_weapon") || 0, 10));
+        if (document.getElementById("f_armour"))
+          h.armour_rank = intToTinyFloat(parseInt(val("f_armour") || 0, 10));
+        if (document.getElementById("f_resolve"))
+          h.resolveXp = intToTinyFloat(parseInt(val("f_resolve") || 0, 10));
+        if (document.getElementById("f_building"))
+          h["roster.building_name"] = val("f_building");
+        if (document.getElementById("f_combat_ready"))
+          a.combat_ready = checked("f_combat_ready");
+        if (document.getElementById("f_deaths_door"))
+          h.visited_deaths_door = checked("f_deaths_door");
+        if (document.getElementById("f_heart"))
+          h.has_had_heart_attack = checked("f_heart");
+        if (document.getElementById("f_town_event"))
+          h.is_from_town_event = checked("f_town_event");
+        if (document.getElementById("f_affliction"))
+          h.affliction_type_id = val("f_affliction");
+        if (document.getElementById("f_virtue"))
+          h.virtue_type_id = val("f_virtue");
+        const quirkSlotNames = getQuirkSlotNames();
+        document.querySelectorAll(".quirk-toggle input[data-quirk-slot]").forEach((el) => {
+          const q = quirkSlotNames[el.dataset.quirkSlot];
+          const p = el.dataset.prop;
+          if (q && h.quirks?.[q]) h.quirks[q][p] = el.checked;
         });
+        document.querySelectorAll("[data-trinket]").forEach((el) => {
+          const k = el.dataset.trinket,
+            p = el.dataset.prop;
+          if (h.trinkets?.items?.[k]) h.trinkets.items[k][p] = el.value;
+        });
+        document.getElementById("jsonEditor").value = JSON.stringify(
+          rosterData,
+          null,
+          2,
+        );
+        if (!options.quiet) {
+          renderHeroList();
+          renderHeroEditor();
+        }
+      }
+      let autoApplyTimer = null;
+      function autoApplyHeroChanges() {
+        clearTimeout(autoApplyTimer);
+        applyHeroChanges({ quiet: true });
+        autoApplyTimer = setTimeout(() => {
+          renderHeroList();
+          const h = getHeroRoot(selectedHeroId);
+          const title = document.querySelector("#heroEditor .hero-title");
+          const sub = document.querySelector("#heroEditor .hero-subtitle");
+          if (h) {
+            if (title) title.textContent = h.actor?.name || "(unnamed)";
+            if (sub)
+              sub.textContent =
+                "Hero #" + selectedHeroId + " · " + (h.heroClass || "");
+          }
+        }, 250);
+      }
+      function showNotes(validation = null) {}
+      async function handleFile(file) {
+        try {
+          const buffer = await file.arrayBuffer();
+          state = decodeDSON(buffer);
+          rosterData = JSON.parse(JSON.stringify(state.data));
+          isRosterMode = isRosterData(rosterData);
+          currentFileName =
+            file.name.replace(/\.[^/.]+$/, "") + "_recoded.json";
+          selectedHeroId = null;
+          Object.keys(extraQuirkSlotsByHero).forEach((k) => delete extraQuirkSlotsByHero[k]);
+
+          document.getElementById("fileModeLabel").textContent = isRosterMode
+            ? "persist.roster.json"
+            : "Generic JSON Editor";
+          document.getElementById("fileName").textContent = file.name;
+          document.getElementById("heroCount").textContent = isRosterMode
+            ? Object.keys(getHeroesObj()).length
+            : "N/A";
+          document.getElementById("objectCount").textContent =
+            state.metadata.numObjects;
+          document.getElementById("fieldCount").textContent =
+            state.metadata.numFields;
+          document.getElementById("buildVersion").textContent =
+            state.metadata.buildNumber;
+          document.getElementById("infoPanel").classList.remove("hidden");
+          document.getElementById("app").classList.remove("hidden");
+          document.getElementById("uploadArea").classList.add("hidden");
+          document.getElementById("jsonEditor").value = JSON.stringify(
+            rosterData,
+            null,
+            2,
+          );
+          ["advancedBtn", "exportDsonBtn"].forEach(
+            (id) => (document.getElementById(id).disabled = false),
+          );
+
+          if (isRosterMode) {
+            document.querySelector(".panel-title").textContent = "Heroes";
+            document.getElementById("heroSearch").classList.remove("hidden");
+            document.getElementById("heroList").classList.remove("hidden");
+            document.getElementById("emptyHero").textContent = "";
+            renderHeroList();
+            renderHeroEditor();
+            setAdvancedVisible(false);
+          } else {
+            document.querySelector(".panel-title").textContent = "JSON";
+            document.getElementById("heroSearch").classList.add("hidden");
+            document.getElementById("heroList").classList.add("hidden");
+            document.getElementById("heroList").innerHTML = "";
+            document.getElementById("emptyHero").classList.add("hidden");
+            document.getElementById("heroEditor").classList.add("hidden");
+            setAdvancedVisible(true);
+          }
+
+        } catch (e) {
+          console.error(e);
+          alert("Could not decode this file: " + e.message);
+        }
+      }
+      function validateRoster() {
+        commitAllQuirkNameInputs();
+        const v = validateEditedJson(rosterData);
+        showNotes(v);
+        return v;
+      }
+      document.getElementById("chooseBtn").onclick = () =>
+        document.getElementById("fileInput").click();
+      document.getElementById("fileInput").onchange = (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+      };
+      const uploadArea2 = document.getElementById("uploadArea");
+      uploadArea2.onclick = () => document.getElementById("fileInput").click();
+      uploadArea2.ondragover = (e) => {
+        e.preventDefault();
+        uploadArea2.classList.add("dragover");
+      };
+      uploadArea2.ondragleave = () => uploadArea2.classList.remove("dragover");
+      uploadArea2.ondrop = (e) => {
+        e.preventDefault();
+        uploadArea2.classList.remove("dragover");
+        if (e.dataTransfer.files.length)
+          handleFile(e.dataTransfer.files[0]);
+      };
+      document.getElementById("heroSearch").oninput = renderHeroList;
+      document.getElementById("heroEditor").addEventListener("input", (event) => {
+        if (event.target?.classList?.contains("quirk-name-input")) return;
+        autoApplyHeroChanges();
+      });
+      document.getElementById("heroEditor").addEventListener("change", (event) => {
+        if (event.target?.classList?.contains("quirk-name-input")) return;
+        autoApplyHeroChanges();
+      });
+      document.getElementById("advancedBtn").onclick = () => {
+        setAdvancedVisible(!showAdvanced);
+      };
+      document.getElementById("syncFromJsonBtn").onclick = () => {
+        try {
+          rosterData = JSON.parse(document.getElementById("jsonEditor").value);
+          isRosterMode = isRosterData(rosterData);
+          selectedHeroId = null;
+          document.getElementById("heroCount").textContent = isRosterMode
+            ? Object.keys(getHeroesObj()).length
+            : "N/A";
+          document.getElementById("fileModeLabel").textContent = isRosterMode
+            ? "persist.roster.json"
+            : "Generic JSON Editor";
+          if (isRosterMode) {
+            document.querySelector(".panel-title").textContent = "Heroes";
+            document.getElementById("heroSearch").classList.remove("hidden");
+            document.getElementById("heroList").classList.remove("hidden");
+            document.getElementById("emptyHero").textContent = "";
+            renderHeroList();
+            renderHeroEditor();
+          } else {
+            document.querySelector(".panel-title").textContent = "JSON";
+            document.getElementById("heroSearch").classList.add("hidden");
+            document.getElementById("heroList").classList.add("hidden");
+            document.getElementById("heroList").innerHTML = "";
+            document.getElementById("emptyHero").classList.add("hidden");
+            document.getElementById("heroEditor").classList.add("hidden");
+          }
+        } catch (e) {}
+      };
+      document.getElementById("syncToJsonBtn").onclick = () => {
+        commitAllQuirkNameInputs();
+        document.getElementById("jsonEditor").value = JSON.stringify(
+          rosterData,
+          null,
+          2,
+        );
+      };
+      document.getElementById("exportDsonBtn").onclick = () => {
+        try {
+          commitAllQuirkNameInputs();
+          const v = validateEditedJson(rosterData);
+          if (!v.ok) return;
+          const out = buildDSON(rosterData);
+          let base = (
+            document.getElementById("fileName").textContent || "persist.roster"
+          ).replace(/\.[^/.]+$/, "");
+          downloadBlob(out, base + "_recoded.json", "application/octet-stream");
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      document.getElementById("clearBtn").onclick = () => {
+        state = null;
+        rosterData = null;
+        selectedHeroId = null;
+        isRosterMode = false;
+        setAdvancedVisible(false);
+        document.getElementById("fileModeLabel").textContent = "Roster UI / JSON Editor";
+        document.getElementById("fileInput").value = "";
+        document.getElementById("infoPanel").classList.add("hidden");
+        document.getElementById("app").classList.add("hidden");
+        document.getElementById("uploadArea").classList.remove("hidden");
+        ["advancedBtn", "exportDsonBtn"].forEach(
+          (id) => (document.getElementById(id).disabled = true),
+        );
+      };
     </script>
-</body>
+  </body>
 </html>

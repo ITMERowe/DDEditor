@@ -1,102 +1,170 @@
-# DSON Format Overview
+# DSON Format
 
-Darkest Dungeon stores its save files using **DSON**, a proprietary binary serialization format.
+This document describes the **DSON** (Darkest Serialized Object Notation) format used by **Darkest Dungeon**, and explains how this project parses and reconstructs save files.
 
-Although the application refers to this process as **decoding**, the save files are **not encrypted**. The editor parses and deserializes the binary data into a JSON representation.
+Unlike JSON, DSON is a compact binary serialization format optimized for fast loading by the game engine. Object names, metadata, and values are stored separately, allowing the game to reconstruct complex object graphs without repeatedly storing structural information.
 
-## File Structure
-
-A DSON save consists of four major sections:
-
-1. Header
-2. Object Metadata
-3. Field Metadata
-4. Data Block
-
-The metadata describes the structure of the save, while the data block stores field names and values.
+This document describes how the browser parser converts a DSON file into editable JSON.
 
 ---
 
-## 1. Verify the Header
+# File Layout
 
-Every DSON file begins with a fixed magic number.
+A DSON save file is divided into four primary sections.
+
+```
+┌────────────────────────────────────────────┐
+│ Header                                     │
+├────────────────────────────────────────────┤
+│ Object Metadata (Meta1)                    │
+├────────────────────────────────────────────┤
+│ Field Metadata (Meta2)                     │
+├────────────────────────────────────────────┤
+│ Raw Data Block                             │
+└────────────────────────────────────────────┘
+```
+
+Each section serves a different purpose.
+
+| Section | Purpose |
+|----------|---------|
+| Header | Describes where every section is located. |
+| Meta1 | Defines the object hierarchy. |
+| Meta2 | Defines every field and where its data lives. |
+| Data | Stores field names and binary values. |
+
+The parser reads these sections independently before reconstructing the original object tree.
+
+---
+
+# Step 1 — Verify the File
+
+Every DSON file begins with the same four-byte magic number.
 
 ```js
 const MAGIC = [0x01, 0xB1, 0x00, 0x00];
 ```
 
-Files with an invalid header are rejected immediately.
+The parser validates these bytes before attempting to read anything else.
+
+If the magic number does not match, the file is rejected immediately.
+
+This prevents accidentally interpreting unrelated binary files as DSON saves.
 
 ---
 
-## 2. Read the Header
+# Step 2 — Read the Header
 
-The header contains offsets and sizes for each section of the file.
+The first 64 bytes form the DSON header.
+
+The header does **not** contain gameplay data.
+
+Instead, it describes where the remaining sections begin.
 
 ```js
-const magicNum = reader.readInt32();
 const revision = reader.readInt32();
 const headerLength = reader.readInt32();
 
-const meta1Size = reader.readInt32();
-const numMeta1 = reader.readInt32();
 const meta1Offset = reader.readInt32();
-
-const numMeta2 = reader.readInt32();
 const meta2Offset = reader.readInt32();
 
-const dataLength = reader.readInt32();
 const dataOffset = reader.readInt32();
+const dataLength = reader.readInt32();
 ```
 
-These offsets allow the parser to jump directly to each section.
+Rather than scanning the file sequentially, the parser jumps directly to each section using these offsets.
+
+The revision field also contains the game's build number.
+
+```
+buildNumber = revision >> 16
+```
 
 ---
 
-## 3. Parse Object Metadata
+# Step 3 — Parse Object Metadata (Meta1)
 
-The first metadata table defines the hierarchy of objects.
+Meta1 contains one entry for every object in the save.
+
+Each entry stores only structural information.
 
 ```js
-meta1.push({
-    parentIndex: reader.readInt32(),
-    meta2EntryIdx: reader.readInt32(),
-    numDirectChildren: reader.readInt32(),
-    numAllChildren: reader.readInt32()
-});
+{
+    parentIndex,
+    meta2EntryIdx,
+    numDirectChildren,
+    numAllChildren
+}
 ```
 
-No actual values are stored here—only structural relationships.
+Meaning:
+
+| Field | Description |
+|------|-------------|
+| parentIndex | Parent object index |
+| meta2EntryIdx | Corresponding Meta2 entry |
+| numDirectChildren | Immediate child count |
+| numAllChildren | Total descendants |
+
+Notice that **no values are stored here**.
+
+Meta1 only defines relationships between objects.
 
 ---
 
-## 4. Parse Field Metadata
+# Step 4 — Parse Field Metadata (Meta2)
 
-Each field is described by an entry containing:
-
-- field name hash
-- offset into the data block
-- packed metadata
+Meta2 contains one entry for every field.
 
 ```js
-const nameHash = reader.readInt32();
-const offset = reader.readInt32();
-const fieldInfo = reader.readInt32();
+{
+    nameHash,
+    offset,
+    fieldInfo
+}
 ```
 
-The packed `fieldInfo` stores several values inside one integer:
+The interesting part is `fieldInfo`.
+
+Instead of storing several integers separately, DSON packs multiple values into one 32-bit integer.
 
 ```
-bit 0       object flag
-bits 2–10   field name length
-bits 11–31  object metadata index
+31                             11 10      2 1 0
++--------------------------------+---------+-+
+| Meta1 Index                    | NameLen |O|
++--------------------------------+---------+-+
 ```
+
+Where:
+
+- bit 0 = object flag
+- bits 2–10 = field name length
+- bits 11–31 = Meta1 index
+
+The parser extracts these values using bit operations.
+
+```js
+const isObject = (fieldInfo & 1) === 1;
+const nameLength = (fieldInfo >> 2) & 0x1FF;
+const meta1Index = fieldInfo >> 11;
+```
+
+Packing several values into one integer reduces file size while remaining quick to decode.
 
 ---
 
-## 5. Read the Data Block
+# Step 5 — Read the Data Block
 
-The data block contains field names followed by their binary values.
+The data block stores the actual bytes.
+
+Unlike Meta1 and Meta2, it contains:
+
+- field names
+- strings
+- integers
+- floats
+- nested DSON blobs
+- unknown binary structures
 
 ```js
 const dataBlock = bytes.slice(
@@ -105,13 +173,30 @@ const dataBlock = bytes.slice(
 );
 ```
 
+Metadata answers **where** data lives.
+
+The data block contains **what** the data actually is.
+
 ---
 
-## 6. Read Fields
+# Step 6 — Read Field Names
 
-Each metadata entry points to a location inside the data block.
+Each Meta2 entry contains an offset into the data block.
 
-The parser reads the field name first, then interprets the remaining bytes as the field value.
+At that offset, the parser reads:
+
+```
+Field Name
+↓
+
+heroClass\0
+
+Immediately followed by
+
+↓
+
+binary value
+```
 
 ```js
 const name = readString(
@@ -119,68 +204,116 @@ const name = readString(
     offset,
     nameLength - 1
 );
-
-offset += nameLength;
-
-const rawValue = dataBlock.slice(
-    offset,
-    nextOffset
-);
 ```
 
-At this stage, the parser has a flat list of fields.
+The next metadata entry determines where the current field ends.
+
+Everything between those offsets belongs to the current field.
 
 ---
 
-## 7. Infer Primitive Types
+# Step 7 — Alignment
 
-DSON does not explicitly store primitive types.
+Not every value begins immediately after the field name.
 
-Instead, the parser infers them from the binary data.
+Many primitive values are aligned to 4-byte boundaries.
+
+The parser calculates the required padding before interpreting data.
 
 ```js
-if (fieldData.length === 1) {
-    const byte = fieldData[0];
-
-    if (byte === 0 || byte === 1)
-        return byte === 1;
-
-    return byte;
-}
+const padding = (4 - (offset % 4)) % 4;
 ```
 
-Values may become:
+Without respecting alignment, integers and floats would be read incorrectly.
 
-- strings
-- integers
-- floats
-- booleans
-- nested objects
+---
 
-Unknown structures are preserved as raw binary placeholders rather than guessed.
+# Step 8 — Decode Primitive Values
+
+Unlike JSON, DSON does **not** explicitly record the type of every value.
+
+Instead, the parser infers types from the binary layout.
+
+Examples include:
+
+### Boolean
+
+```text
+00 = false
+01 = true
+```
+
+### Integer
+
+```
+4 bytes
+Little Endian
+```
+
+### Float
+
+```
+IEEE-754
+Little Endian
+```
+
+### String
+
+```
+[length][UTF-8 bytes][null]
+```
+
+The parser attempts each interpretation in order until one matches.
+
+---
+
+# Step 9 — Embedded DSON Objects
+
+Some values are not primitive types.
+
+Instead, they contain an entire DSON document embedded inside another one.
+
+The parser detects this by checking for another DSON magic number.
+
+```
+01 B1 00 00
+```
+
+When found, it recursively calls the decoder.
+
+```js
+decodeDSON(embeddedBuffer)
+```
+
+This allows structures such as hero data to contain complete nested save objects.
+
+---
+
+# Step 10 — Unknown Values
+
+Not every binary structure has been reverse engineered.
+
+Rather than guessing, the parser preserves unknown data.
 
 Example:
 
 ```json
 {
-    "affliction_type_id": "<data:6b>",
-    "virtue_type_id": "<data:6b>"
+    "affliction_type_id":"<data:6b>"
 }
 ```
+
+This guarantees the editor never silently corrupts values it does not understand.
 
 ---
 
-## 8. Rebuild the Object Hierarchy
+# Step 11 — Rebuild the Object Tree
 
-The metadata tables are used to reconstruct the original object tree.
+At this point every field exists in a flat array.
 
-```js
-if (field.isObject) {
-    field.children = [];
-}
-```
+Meta1 tells the parser which fields belong inside which objects.
 
-Example hierarchy:
+The parser reconstructs the hierarchy using a stack.
 
 ```
 base_root
@@ -188,59 +321,56 @@ base_root
     └── "1"
         └── hero_file_data
             └── raw_data
-                └── base_root
-                    ├── actor
-                    ├── heroClass
-                    ├── quirks
-                    ├── skills
-                    └── trinkets
 ```
+
+Objects are pushed onto the stack when entered and removed once their expected number of children has been processed.
+
+This avoids recursive metadata lookups while rebuilding the tree.
 
 ---
 
-## 9. Export as JSON
+# Step 12 — Convert to JSON
 
-The reconstructed tree is recursively converted into standard JSON.
+Finally, every object is recursively converted into a standard JavaScript object.
 
 ```js
 function toJsonField(field) {
-    if (field.isObject) {
+
+    if(field.isObject){
+
         const object = {};
 
-        for (const child of field.children || []) {
+        for(const child of field.children){
             object[child.name] = toJsonField(child);
         }
 
         return object;
     }
 
-    return field.value ?? null;
+    return field.value;
 }
 ```
 
-Example output:
+The result is ordinary JSON that can be viewed, edited, exported, and re-encoded if desired.
 
-```json
-{
-  "base_root": {
-    "version": 513,
-    "heroes": {
-      "1": {
-        "hero_file_data": {
-          "raw_data": {
-            "base_root": {
-              "actor": {
-                "name": "Reynauld"
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-```
+---
 
-## Credits
+# Design Notes
 
-The parsing approach is adapted from the reverse engineering work by **robojumper** in the original Darkest Dungeon Save Editor project.
+Several design decisions were made to preserve save integrity.
+
+- Unknown binary structures are never guessed.
+- Alignment is respected before reading primitive values.
+- Embedded DSON documents are decoded recursively.
+- Metadata is parsed before values to avoid unnecessary file scans.
+- Object hierarchies are reconstructed from metadata rather than inferred.
+
+These choices prioritize correctness over aggressive interpretation.
+
+---
+
+# Credits
+
+The DSON parsing logic used by this project is adapted from the reverse engineering work by **robojumper**.
+
+This document explains how the adapted browser implementation reconstructs DSON saves into editable JSON.

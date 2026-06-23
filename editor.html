@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darkest Dungeon DSON Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+
+        h1 {
+            color: #ff6b6b;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            font-size: 28px;
+        }
+
+        .top-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .file-info {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #404050;
+            border-radius: 6px;
+            padding: 12px 15px;
+            font-size: 13px;
+            min-width: 300px;
+        }
+
+        .file-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+
+        .info-label {
+            color: #808080;
+            font-weight: bold;
+        }
+
+        .info-value {
+            color: #ff6b6b;
+            font-family: 'Courier New', monospace;
+        }
+
+        button {
+            background: #ff6b6b;
+            border: none;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            background: #ff8787;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .upload-area {
+            background: rgba(255, 107, 107, 0.1);
+            border: 3px dashed #ff6b6b;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: #ff8787;
+        }
+
+        .upload-area.dragover {
+            background: rgba(255, 107, 107, 0.3);
+            border-color: #ff8787;
+            transform: scale(1.02);
+        }
+
+        .upload-area.hidden {
+            display: none;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .status {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 4px solid #ff6b6b;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+        }
+
+        .status.error {
+            border-left-color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+            color: #ff8787;
+        }
+
+        .status.success {
+            border-left-color: #4caf50;
+            background: rgba(76, 175, 80, 0.1);
+            color: #81c784;
+        }
+
+        .status.hidden {
+            display: none;
+        }
+
+        .editor-container {
+            display: none;
+            gap: 20px;
+        }
+
+        .editor-container.visible {
+            display: flex;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #404050;
+            border-radius: 6px;
+            padding: 15px;
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            color: #ff6b6b;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tree-item {
+            padding: 5px 0;
+            cursor: pointer;
+            color: #e0e0e0;
+            font-size: 13px;
+            transition: color 0.2s ease;
+            padding-left: 5px;
+            border-radius: 3px;
+        }
+
+        .tree-item:hover {
+            background: rgba(255, 107, 107, 0.1);
+            color: #ff6b6b;
+        }
+
+        .tree-item.active {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff8787;
+            font-weight: bold;
+        }
+
+        .tree-expand {
+            display: inline-block;
+            width: 15px;
+            text-align: center;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+
+        .main-panel {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #404050;
+            border-radius: 6px;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(100vh - 300px);
+        }
+
+        .editor-title {
+            color: #ff6b6b;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .field-group {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-left: 3px solid #ff6b6b;
+            border-radius: 4px;
+        }
+
+        .field-label {
+            color: #808080;
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .field-value {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea,
+        select {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid #404050;
+            border-radius: 4px;
+            color: #e0e0e0;
+            padding: 8px 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            flex: 1;
+            transition: border-color 0.2s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #ff6b6b;
+            box-shadow: 0 0 8px rgba(255, 107, 107, 0.2);
+        }
+
+        .object-tree {
+            margin: 10px 0;
+        }
+
+        .object-item {
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-left: 3px solid #ff6b6b;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+
+        .object-header {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ff8787;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .object-content {
+            padding-left: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .object-content.collapsed {
+            display: none;
+        }
+
+        .array-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+
+        .array-table th,
+        .array-table td {
+            border: 1px solid #404050;
+            padding: 8px;
+            text-align: left;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .array-table th {
+            background: rgba(255, 107, 107, 0.1);
+            color: #ff8787;
+            font-weight: bold;
+        }
+
+        .array-table tr:hover {
+            background: rgba(255, 107, 107, 0.05);
+        }
+
+        .search-box {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .footer-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .modified-indicator {
+            color: #ffaa00;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        @media (max-width: 1024px) {
+            .editor-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                max-height: 300px;
+            }
+
+            .main-panel {
+                max-height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚔️ Darkest Dungeon DSON Editor</h1>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-text">📁 Drop DSON file here or click to select</div>
+            <input type="file" id="fileInput" accept=".json" />
+        </div>
+
+        <div class="status hidden" id="status"></div>
+
+        <div class="editor-container" id="editorContainer">
+            <div class="sidebar">
+                <div class="sidebar-title">Navigation</div>
+                <input type="text" class="search-box" id="searchBox" placeholder="Search fields...">
+                <div id="navigationTree"></div>
+            </div>
+
+            <div class="main-panel">
+                <div class="editor-title" id="editorTitle">Select an item</div>
+                <div class="file-info" id="fileInfoPanel" style="display: none; margin-bottom: 20px;">
+                    <div class="file-info-row">
+                        <span class="info-label">File:</span>
+                        <span class="info-value" id="infoFileName">-</span>
+                    </div>
+                    <div class="file-info-row">
+                        <span class="info-label">Size:</span>
+                        <span class="info-value" id="infoFileSize">-</span>
+                    </div>
+                    <div class="file-info-row">
+                        <span class="info-label">Objects:</span>
+                        <span class="info-value" id="infoObjectCount">-</span>
+                    </div>
+                    <div class="file-info-row">
+                        <span class="info-label">Fields:</span>
+                        <span class="info-value" id="infoFieldCount">-</span>
+                    </div>
+                </div>
+                <div id="editorContent"></div>
+
+                <div class="footer-controls">
+                    <button id="downloadBtn" disabled>💾 Download JSON</button>
+                    <button id="copyBtn" disabled>📋 Copy JSON</button>
+                    <button id="resetBtn" disabled>↻ Reset Changes</button>
+                    <button id="clearBtn">🗑️ Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MAGIC = [0x01, 0xB1, 0x00, 0x00];
+        let decodedData = null;
+        let originalData = null;
+        let currentFileName = "decoded.json";
+        let currentMetadata = null;
+        let isModified = false;
+
+        class BinaryReader {
+            constructor(buffer) {
+                this.buffer = buffer;
+                this.view = new DataView(buffer);
+                this.offset = 0;
+            }
+
+            readInt32() {
+                const value = this.view.getInt32(this.offset, true);
+                this.offset += 4;
+                return value;
+            }
+
+            readFloat32() {
+                const value = this.view.getFloat32(this.offset, true);
+                this.offset += 4;
+                return value;
+            }
+
+            readByte() {
+                const value = this.view.getUint8(this.offset);
+                this.offset += 1;
+                return value;
+            }
+
+            readBytes(count) {
+                const bytes = new Uint8Array(this.buffer, this.offset, count);
+                this.offset += count;
+                return bytes;
+            }
+
+            seek(offset) {
+                this.offset = offset;
+            }
+
+            peek() {
+                return this.offset;
+            }
+
+            remaining() {
+                return this.view.byteLength - this.offset;
+            }
+        }
+
+        function stringHash(str) {
+            let hash = 0;
+            const enc = new TextEncoder().encode(str);
+            for (let i = 0; i < enc.length; i++) {
+                hash = ((hash * 53) + enc[i]) | 0;
+            }
+            return hash >>> 0;
+        }
+
+        function readString(bytes, offset, length) {
+            const arr = bytes.slice(offset, offset + length);
+            return new TextDecoder('utf-8').decode(arr);
+        }
+
+        function getAlignmentPadding(offset) {
+            return (4 - (offset % 4)) % 4;
+        }
+
+        function parseFieldValue(fieldData, dataOffsetInFile) {
+            if (fieldData.length === 0) {
+                return null;
+            }
+
+            const padding = getAlignmentPadding(dataOffsetInFile);
+
+            if (fieldData.length === 1) {
+                const byte = fieldData[0];
+                if (byte === 0 || byte === 1) {
+                    return byte === 1;
+                }
+                if (byte >= 0x20 && byte <= 0x7E) {
+                    return String.fromCharCode(byte);
+                }
+                return byte;
+            }
+
+            if (fieldData.length >= padding + 5) {
+                try {
+                    const view = new DataView(fieldData.buffer, fieldData.byteOffset + padding);
+                    const strlen = view.getInt32(0, true);
+                    
+                    if (strlen > 4 && fieldData.length === padding + 4 + strlen) {
+                        const stringDataBytes = fieldData.slice(padding + 4, padding + 4 + Math.min(4, strlen));
+                        const magic = Array.from(stringDataBytes);
+                        if (magic.length === 4 && magic.join(',') === MAGIC.join(',')) {
+                            try {
+                                const embeddedBuffer = fieldData.buffer.slice(
+                                    fieldData.byteOffset + padding + 4,
+                                    fieldData.byteOffset + padding + 4 + strlen - 1
+                                );
+                                const result = decodeDSON(embeddedBuffer);
+                                return result.data;
+                            } catch (e) {}
+                        }
+                        
+                        const str = readString(fieldData, padding + 4, strlen - 1);
+                        return str;
+                    }
+                } catch (e) {}
+            }
+
+            if (fieldData.length >= padding + 4) {
+                try {
+                    const view = new DataView(fieldData.buffer, fieldData.byteOffset + padding, 4);
+                    const intVal = view.getInt32(0, true);
+                    if (fieldData.length === padding + 4) {
+                        return intVal;
+                    }
+                } catch (e) {}
+            }
+
+            if (fieldData.length >= padding + 4) {
+                try {
+                    const view = new DataView(fieldData.buffer, fieldData.byteOffset + padding, 4);
+                    const floatVal = view.getFloat32(0, true);
+                    if (fieldData.length === padding + 4 && !Number.isInteger(floatVal)) {
+                        return floatVal;
+                    }
+                } catch (e) {}
+            }
+
+            return `<data:${fieldData.length}b>`;
+        }
+
+        function decodeDSON(buffer) {
+            const bytes = new Uint8Array(buffer);
+            const reader = new BinaryReader(buffer);
+
+            const magic = Array.from(bytes.slice(0, 4));
+            if (magic.join(',') !== MAGIC.join(',')) {
+                throw new Error(`Invalid magic number: ${magic.map(x => x.toString(16).padStart(2, '0')).join(' ')}`);
+            }
+
+            reader.seek(0);
+            const magicNum = reader.readInt32();
+            const revision = reader.readInt32();
+            const headerLength = reader.readInt32();
+            const _zeroes1 = reader.readInt32();
+            const meta1Size = reader.readInt32();
+            const numMeta1 = reader.readInt32();
+            const meta1Offset = reader.readInt32();
+            const _zeroes2a = reader.readInt32();
+            const _zeroes2b = reader.readInt32();
+            const _zeroes2c = reader.readInt32();
+            const _zeroes2d = reader.readInt32();
+            const numMeta2 = reader.readInt32();
+            const meta2Offset = reader.readInt32();
+            const _zeroes4 = reader.readInt32();
+            const dataLength = reader.readInt32();
+            const dataOffset = reader.readInt32();
+
+            if (headerLength !== 64) {
+                throw new Error(`Invalid header length: ${headerLength}`);
+            }
+
+            const buildNumber = (revision >> 16) & 0xFFFF;
+
+            const meta1 = [];
+            reader.seek(meta1Offset);
+            for (let i = 0; i < numMeta1; i++) {
+                meta1.push({
+                    parentIndex: reader.readInt32(),
+                    meta2EntryIdx: reader.readInt32(),
+                    numDirectChildren: reader.readInt32(),
+                    numAllChildren: reader.readInt32()
+                });
+            }
+
+            const meta2 = [];
+            reader.seek(meta2Offset);
+            for (let i = 0; i < numMeta2; i++) {
+                const nameHash = reader.readInt32();
+                const offset = reader.readInt32();
+                const fieldInfo = reader.readInt32();
+                const isObject = (fieldInfo & 1) === 1;
+                const nameLen = (fieldInfo & 0b11111111100) >> 2;
+                const meta1Idx = (fieldInfo & 0b1111111111111111111100000000000) >> 11;
+
+                meta2.push({
+                    nameHash,
+                    offset,
+                    fieldInfo,
+                    isObject,
+                    nameLen,
+                    meta1Idx
+                });
+            }
+
+            const dataBlock = bytes.slice(dataOffset, dataOffset + dataLength);
+
+            const fields = [];
+            for (let i = 0; i < meta2.length; i++) {
+                const m = meta2[i];
+                let off = m.offset;
+
+                const name = readString(dataBlock, off, m.nameLen - 1);
+                off += m.nameLen;
+
+                let nextOffset = dataBlock.length;
+                for (let j = 0; j < meta2.length; j++) {
+                    if (meta2[j].offset > m.offset && meta2[j].offset < nextOffset) {
+                        nextOffset = meta2[j].offset;
+                    }
+                }
+
+                const rawData = dataBlock.slice(off, nextOffset);
+
+                fields.push({
+                    name,
+                    isObject: m.isObject,
+                    meta1Idx: m.meta1Idx,
+                    rawData,
+                    dataStartInFile: off,
+                    dataOffset: m.offset
+                });
+            }
+
+            fields.sort((a, b) => a.dataOffset - b.dataOffset);
+
+            for (const field of fields) {
+                if (!field.isObject) {
+                    field.value = parseFieldValue(field.rawData, field.dataStartInFile);
+                }
+            }
+
+            const root = [];
+            const fieldStack = [];
+            let runningObjIdx = -1;
+
+            for (const field of fields) {
+                if (field.isObject) {
+                    field.children = [];
+                    const expected = (meta1[field.meta1Idx] && meta1[field.meta1Idx].numDirectChildren) || 0;
+                    field.expectedChildren = expected;
+                    runningObjIdx++;
+                }
+
+                if (fieldStack.length === 0) {
+                    root.push(field);
+                } else {
+                    field.parent = fieldStack[fieldStack.length - 1];
+                    field.parent.children.push(field);
+                }
+
+                if (field.isObject) {
+                    fieldStack.push(field);
+                }
+
+                while (fieldStack.length > 0 &&
+                       fieldStack[fieldStack.length - 1].children.length >= 
+                       fieldStack[fieldStack.length - 1].expectedChildren) {
+                    fieldStack.pop();
+                }
+            }
+
+            function toJsonField(f) {
+                if (f.isObject) {
+                    const obj = {};
+                    if (f.children) {
+                        for (const c of f.children) {
+                            obj[c.name] = toJsonField(c);
+                        }
+                    }
+                    return obj;
+                }
+                return (f.value !== undefined) ? f.value : null;
+            }
+
+            const result = {};
+            for (const r of root) {
+                result[r.name] = toJsonField(r);
+            }
+
+            return {
+                data: result,
+                metadata: {
+                    numObjects: numMeta1,
+                    numFields: numMeta2,
+                    buildNumber: buildNumber,
+                    fileSize: buffer.byteLength
+                }
+            };
+        }
+
+        function updateStatus(message, isError = false) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.classList.remove('hidden', 'error', 'success');
+            statusEl.classList.add(isError ? 'error' : 'success');
+        }
+
+        function hideStatus() {
+            document.getElementById('status').classList.add('hidden');
+        }
+
+        function buildNavigationTree(data, parentPath = '') {
+            const tree = [];
+            const keys = Object.keys(data);
+
+            for (const key of keys) {
+                const value = data[key];
+                const path = parentPath ? `${parentPath}.${key}` : key;
+                
+                let displayValue = '';
+                if (value === null) displayValue = 'null';
+                else if (typeof value === 'object') {
+                    if (Array.isArray(value)) {
+                        displayValue = `[${value.length}]`;
+                    } else {
+                        const objKeys = Object.keys(value).length;
+                        displayValue = `{${objKeys}}`;
+                    }
+                } else {
+                    displayValue = String(value).substring(0, 30);
+                }
+
+                tree.push({
+                    name: key,
+                    path: path,
+                    value: value,
+                    displayValue: displayValue,
+                    isExpandable: typeof value === 'object' && value !== null
+                });
+            }
+
+            return tree;
+        }
+
+        function renderNavigationTree(data) {
+            const treeContainer = document.getElementById('navigationTree');
+            treeContainer.innerHTML = '';
+
+            const tree = buildNavigationTree(data);
+
+            for (const item of tree) {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'tree-item';
+                itemEl.dataset.path = item.path;
+
+                let expandButton = '<span class="tree-expand"></span>';
+                if (item.isExpandable) {
+                    expandButton = '<span class="tree-expand">▼</span>';
+                }
+
+                itemEl.innerHTML = `${expandButton}<span class="item-name">${item.name}</span> <span style="color: #808080;">${item.displayValue}</span>`;
+
+                itemEl.addEventListener('click', () => {
+                    document.querySelectorAll('.tree-item.active').forEach(el => el.classList.remove('active'));
+                    itemEl.classList.add('active');
+                    renderEditorContent(item.value, item.path);
+                });
+
+                treeContainer.appendChild(itemEl);
+            }
+        }
+
+        function renderEditorContent(value, path) {
+            const editorContent = document.getElementById('editorContent');
+            const editorTitle = document.getElementById('editorTitle');
+
+            editorTitle.textContent = path || 'Root';
+
+            if (value === null) {
+                editorContent.innerHTML = '<div style="color: #808080; padding: 20px;">Value is null</div>';
+                return;
+            }
+
+            if (typeof value !== 'object') {
+                const html = `
+                    <div class="field-group">
+                        <label class="field-label">Value</label>
+                        <div class="field-value">
+                            <textarea readonly style="min-height: 100px;">${String(value).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                        </div>
+                    </div>
+                `;
+                editorContent.innerHTML = html;
+                return;
+            }
+
+            if (Array.isArray(value)) {
+                editorContent.innerHTML = renderDetailedValue(value, path);
+            } else {
+                editorContent.innerHTML = renderDetailedValue(value, path);
+            }
+        }
+
+        function renderObjectEditor(obj) {
+            const editorContent = document.getElementById('editorContent');
+            let html = '<div class="object-tree">';
+
+            for (const [key, val] of Object.entries(obj)) {
+                if (typeof val === 'object' && val !== null) {
+                    const isArray = Array.isArray(val);
+                    const itemCount = isArray ? val.length : Object.keys(val).length;
+                    const icon = isArray ? '📋' : '📦';
+
+                    html += `
+                        <div class="object-item">
+                            <div class="object-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+                                <span class="tree-expand">▼</span>
+                                <span>${icon} ${key}</span>
+                                <span style="color: #808080; font-size: 11px;">${itemCount} items</span>
+                            </div>
+                            <div class="object-content">
+                                ${renderDetailedValue(val, key)}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="field-group">
+                            <label class="field-label">${key}</label>
+                            <div class="field-value">
+                                <input type="text" value="${val !== null ? String(val).replace(/"/g, '&quot;') : ''}" data-key="${key}">
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            html += '</div>';
+            editorContent.innerHTML = html;
+
+            // Add change listeners
+            editorContent.querySelectorAll('input[data-key]').forEach(input => {
+                input.addEventListener('change', () => {
+                    isModified = true;
+                    document.getElementById('resetBtn').disabled = false;
+                });
+            });
+        }
+
+        function renderDetailedValue(val, key, depth = 0) {
+            const indent = 'margin-left: ' + (depth * 15) + 'px;';
+
+            if (val === null) {
+                return '<div style="color: #808080; ' + indent + '">null</div>';
+            }
+
+            if (Array.isArray(val)) {
+                if (val.length === 0) {
+                    return '<div style="color: #808080; ' + indent + '">Empty array</div>';
+                }
+
+                const firstItem = val[0];
+                if (typeof firstItem === 'object' && firstItem !== null && !Array.isArray(firstItem)) {
+                    // Array of objects - render full table
+                    const keys = new Set();
+                    val.forEach(item => {
+                        if (typeof item === 'object') {
+                            Object.keys(item).forEach(k => keys.add(k));
+                        }
+                    });
+
+                    let html = '<table class="array-table" style="margin: 10px 0; ' + indent + '"><thead><tr>';
+                    html += '<th>#</th>';
+                    Array.from(keys).forEach(k => {
+                        html += `<th>${k}</th>`;
+                    });
+                    html += '</tr></thead><tbody>';
+
+                    val.forEach((item, idx) => {
+                        html += '<tr style="cursor: pointer;" onclick="this.classList.toggle(\'expanded\')">';
+                        html += `<td><strong>${idx}</strong></td>`;
+                        Array.from(keys).forEach(k => {
+                            const v = item[k];
+                            let displayVal = '';
+                            if (v === null) {
+                                displayVal = '<span style="color: #808080;">null</span>';
+                            } else if (typeof v === 'object') {
+                                if (Array.isArray(v)) {
+                                    displayVal = `<span style="color: #808080;">[${v.length}]</span>`;
+                                } else {
+                                    displayVal = `<span style="color: #808080;">{${Object.keys(v).length}}</span>`;
+                                }
+                            } else {
+                                displayVal = String(v).substring(0, 50);
+                            }
+                            html += `<td>${displayVal}</td>`;
+                        });
+                        html += '</tr>';
+                    });
+
+                    html += '</tbody></table>';
+                    return html;
+                } else if (typeof firstItem === 'object' && Array.isArray(firstItem)) {
+                    // Array of arrays
+                    let html = '<div style="' + indent + '">';
+                    val.forEach((arr, idx) => {
+                        html += `<div style="padding: 8px; background: rgba(0,0,0,0.2); margin: 5px 0; border-radius: 3px;">
+                            <span style="color: #ff8787; font-weight: bold;">[${idx}]</span> Array(${arr.length})
+                            ${renderDetailedValue(arr, '', depth + 1)}
+                        </div>`;
+                    });
+                    html += '</div>';
+                    return html;
+                } else {
+                    // Array of primitives
+                    let html = '<div style="margin: 10px 0; ' + indent + '">';
+                    val.forEach((item, idx) => {
+                        html += `<div style="padding: 6px 10px; background: rgba(0,0,0,0.2); margin: 3px 0; border-radius: 3px; font-family: monospace; font-size: 12px;">
+                            <span style="color: #808080;">[${idx}]</span> <span style="color: #e0e0e0;">${item !== null ? String(item).substring(0, 200) : 'null'}</span>
+                        </div>`;
+                    });
+                    html += '</div>';
+                    return html;
+                }
+            }
+
+            if (typeof val === 'object') {
+                // Render nested object recursively
+                let html = '<div style="margin: 10px 0; padding: 10px; background: rgba(0,0,0,0.15); border-left: 3px solid #ff6b6b; border-radius: 3px; ' + indent + '">';
+                const keys = Object.keys(val);
+                
+                keys.forEach(k => {
+                    const v = val[k];
+                    html += '<div style="margin: 8px 0;">';
+                    
+                    if (v === null) {
+                        html += `<div style="padding: 6px 8px;"><span style="color: #ff8787; font-weight: bold;">${k}:</span> <span style="color: #808080;">null</span></div>`;
+                    } else if (typeof v === 'object') {
+                        if (Array.isArray(v)) {
+                            if (v.length === 0) {
+                                html += `<div style="padding: 6px 8px;"><span style="color: #ff8787; font-weight: bold;">${k}:</span> <span style="color: #808080;">[]</span></div>`;
+                            } else {
+                                html += `<div style="padding: 6px 8px; cursor: pointer; background: rgba(255,107,107,0.1); border-radius: 3px;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                                    <span style="color: #ff8787; font-weight: bold;">▼ ${k}:</span> <span style="color: #808080;">Array(${v.length})</span>
+                                </div>
+                                <div style="display: block;">
+                                    ${renderDetailedValue(v, k, depth + 1)}
+                                </div>`;
+                            }
+                        } else {
+                            const objSize = Object.keys(v).length;
+                            html += `<div style="padding: 6px 8px; cursor: pointer; background: rgba(255,107,107,0.1); border-radius: 3px;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                                <span style="color: #ff8787; font-weight: bold;">▼ ${k}:</span> <span style="color: #808080;">Object(${objSize})</span>
+                            </div>
+                            <div style="display: block;">
+                                ${renderDetailedValue(v, k, depth + 1)}
+                            </div>`;
+                        }
+                    } else {
+                        html += `<div style="padding: 6px 8px;"><span style="color: #ff8787; font-weight: bold;">${k}:</span> <span style="color: #e0e0e0; font-family: monospace;">${String(v)}</span></div>`;
+                    }
+                    
+                    html += '</div>';
+                });
+
+                html += '</div>';
+                return html;
+            }
+
+            return `<div style="color: #e0e0e0; font-family: monospace; ' + indent + '">${String(val)}</div>`;
+        }
+
+        function renderEditorTitle(title) {
+            const editorTitle = document.getElementById('editorTitle');
+            editorTitle.textContent = title || 'Root';
+        }
+
+        async function handleFile(file) {
+            try {
+                updateStatus('Decoding file...', false);
+                const buffer = await file.arrayBuffer();
+                const result = decodeDSON(buffer);
+                
+                decodedData = result.data;
+                originalData = JSON.parse(JSON.stringify(result.data));
+                currentFileName = file.name.replace(/\.[^/.]+$/, '.json');
+                currentMetadata = result.metadata;
+                isModified = false;
+
+                // Update file info
+                document.getElementById('infoFileName').textContent = file.name;
+                document.getElementById('infoFileSize').textContent = (result.metadata.fileSize / 1024).toFixed(2) + ' KB';
+                document.getElementById('infoObjectCount').textContent = result.metadata.numObjects;
+                document.getElementById('infoFieldCount').textContent = result.metadata.numFields;
+
+                // Show editor
+                document.getElementById('uploadArea').classList.add('hidden');
+                document.getElementById('editorContainer').classList.add('visible');
+                document.getElementById('fileInfoPanel').style.display = 'block';
+
+                // Build navigation
+                renderNavigationTree(decodedData);
+
+                // Enable buttons
+                document.getElementById('downloadBtn').disabled = false;
+                document.getElementById('copyBtn').disabled = false;
+                document.getElementById('clearBtn').disabled = false;
+
+                updateStatus(`✓ Decoded! (${result.metadata.numFields} fields)`, false);
+                setTimeout(hideStatus, 3000);
+            } catch (error) {
+                updateStatus(`✗ Error: ${error.message}`, true);
+                console.error(error);
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('uploadArea').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        document.getElementById('uploadArea').addEventListener('dragover', (e) => {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.add('dragover');
+        });
+
+        document.getElementById('uploadArea').addEventListener('dragleave', () => {
+            document.getElementById('uploadArea').classList.remove('dragover');
+        });
+
+        document.getElementById('uploadArea').addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (!decodedData) return;
+            const json = JSON.stringify(decodedData, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentFileName;
+            a.click();
+            URL.revokeObjectURL(url);
+            updateStatus('✓ Downloaded!', false);
+            setTimeout(hideStatus, 2000);
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', async () => {
+            if (!decodedData) return;
+            const json = JSON.stringify(decodedData, null, 2);
+            try {
+                await navigator.clipboard.writeText(json);
+                updateStatus('✓ Copied to clipboard!', false);
+                setTimeout(hideStatus, 2000);
+            } catch (err) {
+                updateStatus('✗ Failed to copy', true);
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            decodedData = JSON.parse(JSON.stringify(originalData));
+            isModified = false;
+            document.getElementById('resetBtn').disabled = true;
+            renderNavigationTree(decodedData);
+            document.getElementById('editorContent').innerHTML = '';
+            updateStatus('✓ Changes reset', false);
+            setTimeout(hideStatus, 2000);
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            decodedData = null;
+            originalData = null;
+            isModified = false;
+            document.getElementById('uploadArea').classList.remove('hidden');
+            document.getElementById('editorContainer').classList.remove('visible');
+            document.getElementById('fileInput').value = '';
+            document.getElementById('navigationTree').innerHTML = '';
+            document.getElementById('editorContent').innerHTML = '';
+            document.getElementById('downloadBtn').disabled = true;
+            document.getElementById('copyBtn').disabled = true;
+            document.getElementById('resetBtn').disabled = true;
+            hideStatus();
+        });
+
+        document.getElementById('searchBox').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('.tree-item');
+
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(searchTerm) ? 'block' : 'none';
+            });
+        });
+    </script>
+</body>
+</html>

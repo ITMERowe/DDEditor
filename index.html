@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darkest Dungeon DSON Decoder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #ff6b6b;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #a0a0a0;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .upload-area {
+            background: rgba(255, 107, 107, 0.1);
+            border: 3px dashed #ff6b6b;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: #ff8787;
+            transform: scale(1.02);
+        }
+
+        .upload-area.dragover {
+            background: rgba(255, 107, 107, 0.3);
+            border-color: #ff8787;
+            transform: scale(1.05);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ff6b6b;
+            margin-bottom: 5px;
+        }
+
+        .upload-subtext {
+            color: #808080;
+            font-size: 14px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #ff6b6b;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            background: #ff8787;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 4px solid #ff6b6b;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+        }
+
+        .status.error {
+            border-left-color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+            color: #ff8787;
+        }
+
+        .status.success {
+            border-left-color: #4caf50;
+            background: rgba(76, 175, 80, 0.1);
+            color: #81c784;
+        }
+
+        .output-container {
+            display: flex;
+            gap: 20px;
+            min-height: 500px;
+        }
+
+        .output-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            color: #ff6b6b;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        textarea, pre {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid #404050;
+            border-radius: 6px;
+            color: #e0e0e0;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            flex: 1;
+            resize: none;
+            overflow: auto;
+            line-height: 1.4;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #ff6b6b;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.2);
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .info-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #404050;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 107, 107, 0.1);
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #808080;
+            font-weight: bold;
+        }
+
+        .info-value {
+            color: #ff6b6b;
+            font-family: 'Courier New', monospace;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 768px) {
+            .output-container {
+                flex-direction: column;
+            }
+
+            body {
+                padding: 10px;
+            }
+
+            .upload-area {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚔️ Darkest Dungeon DSON Decoder</h1>
+        <div class="subtitle">Convert binary DSON save files to readable JSON</div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Drop your DSON file here</div>
+            <div class="upload-subtext">or click to select</div>
+            <input type="file" id="fileInput" accept=".json" />
+        </div>
+
+        <div class="controls">
+            <button id="uploadBtn">Choose File</button>
+            <button id="downloadBtn" disabled>Download JSON</button>
+            <button id="copyBtn" disabled>Copy to Clipboard</button>
+            <button id="clearBtn">Clear</button>
+        </div>
+
+        <div class="status hidden" id="status"></div>
+
+        <div class="info-panel hidden" id="infoPanel">
+            <div class="info-item">
+                <span class="info-label">File Name:</span>
+                <span class="info-value" id="fileName">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">File Size:</span>
+                <span class="info-value" id="fileSize">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Objects:</span>
+                <span class="info-value" id="objectCount">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Fields:</span>
+                <span class="info-value" id="fieldCount">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Build:</span>
+                <span class="info-value" id="buildVersion">-</span>
+            </div>
+        </div>
+
+        <div class="output-container hidden" id="outputContainer">
+            <div class="output-panel">
+                <div class="panel-title">JSON Output</div>
+                <textarea id="output" readonly></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MAGIC = [0x01, 0xB1, 0x00, 0x00];
+        let decodedData = null;
+        let currentFileName = "decoded.json";
+
+        class BinaryReader {
+            constructor(buffer) {
+                this.buffer = buffer;
+                this.view = new DataView(buffer);
+                this.offset = 0;
+            }
+
+            readInt32() {
+                const value = this.view.getInt32(this.offset, true);
+                this.offset += 4;
+                return value;
+            }
+
+            readFloat32() {
+                const value = this.view.getFloat32(this.offset, true);
+                this.offset += 4;
+                return value;
+            }
+
+            readByte() {
+                const value = this.view.getUint8(this.offset);
+                this.offset += 1;
+                return value;
+            }
+
+            readBytes(count) {
+                const bytes = new Uint8Array(this.buffer, this.offset, count);
+                this.offset += count;
+                return bytes;
+            }
+
+            seek(offset) {
+                this.offset = offset;
+            }
+
+            peek() {
+                return this.offset;
+            }
+
+            remaining() {
+                return this.view.byteLength - this.offset;
+            }
+        }
+
+        function stringHash(str) {
+            let hash = 0;
+            const enc = new TextEncoder().encode(str);
+            for (let i = 0; i < enc.length; i++) {
+                hash = ((hash * 53) + enc[i]) | 0;
+            }
+            return hash >>> 0;
+        }
+
+        function readString(bytes, offset, length) {
+            const arr = bytes.slice(offset, offset + length);
+            return new TextDecoder('utf-8').decode(arr);
+        }
+
+        function getAlignmentPadding(offset) {
+            return (4 - (offset % 4)) % 4;
+        }
+
+        function parseFieldValue(fieldData, dataOffsetInFile) {
+            if (fieldData.length === 0) {
+                return null;
+            }
+
+            // Calculate alignment padding based on where the data actually starts
+            const padding = getAlignmentPadding(dataOffsetInFile);
+
+            // Try to parse as boolean (1 byte, no alignment)
+            if (fieldData.length === 1) {
+                const byte = fieldData[0];
+                if (byte === 0 || byte === 1) {
+                    return byte === 1;
+                }
+                if (byte >= 0x20 && byte <= 0x7E) {
+                    return String.fromCharCode(byte);
+                }
+                return byte;
+            }
+
+            // Try to parse as string (4-byte length + null-terminated string, aligned)
+            // But first check if this might be an embedded DSON file
+            if (fieldData.length >= padding + 5) {
+                try {
+                    const view = new DataView(fieldData.buffer, fieldData.byteOffset + padding);
+                    const strlen = view.getInt32(0, true);
+                    
+                    // Check if this string might actually be DSON data
+                    if (strlen > 4 && fieldData.length === padding + 4 + strlen) {
+                        // Check for DSON magic number at the string data position
+                        const stringDataBytes = fieldData.slice(padding + 4, padding + 4 + Math.min(4, strlen));
+                        const magic = Array.from(stringDataBytes);
+                        if (magic.length === 4 && magic.join(',') === MAGIC.join(',')) {
+                            // This is an embedded DSON file!
+                            try {
+                                const embeddedBuffer = fieldData.buffer.slice(
+                                    fieldData.byteOffset + padding + 4,
+                                    fieldData.byteOffset + padding + 4 + strlen - 1
+                                );
+                                const result = decodeDSON(embeddedBuffer);
+                                return result.data;
+                            } catch (e) {}
+                        }
+                        
+                        // Parse as normal string if not DSON
+                        const str = readString(fieldData, padding + 4, strlen - 1);
+                        return str;
+                    }
+                } catch (e) {}
+            }
+
+            // Try to parse as int (4 bytes, aligned)
+            if (fieldData.length >= padding + 4) {
+                try {
+                    const view = new DataView(fieldData.buffer, fieldData.byteOffset + padding, 4);
+                    const intVal = view.getInt32(0, true);
+                    if (fieldData.length === padding + 4) {
+                        return intVal;
+                    }
+                } catch (e) {}
+            }
+
+            // Try to parse as float (4 bytes, aligned)
+            if (fieldData.length >= padding + 4) {
+                try {
+                    const view = new DataView(fieldData.buffer, fieldData.byteOffset + padding, 4);
+                    const floatVal = view.getFloat32(0, true);
+                    if (fieldData.length === padding + 4 && !Number.isInteger(floatVal)) {
+                        return floatVal;
+                    }
+                } catch (e) {}
+            }
+
+            // If nothing matched, return placeholder
+            return `<data:${fieldData.length}b>`;
+        }
+
+        function decodeDSON(buffer) {
+            const bytes = new Uint8Array(buffer);
+            const reader = new BinaryReader(buffer);
+
+            // Validate magic number
+            const magic = Array.from(bytes.slice(0, 4));
+            if (magic.join(',') !== MAGIC.join(',')) {
+                throw new Error(`Invalid magic number: ${magic.map(x => x.toString(16).padStart(2, '0')).join(' ')}`);
+            }
+
+            // Read header (64 bytes total)
+            reader.seek(0);
+            const magicNum = reader.readInt32();
+            const revision = reader.readInt32();
+            const headerLength = reader.readInt32();
+            const _zeroes1 = reader.readInt32();
+            const meta1Size = reader.readInt32();
+            const numMeta1 = reader.readInt32();
+            const meta1Offset = reader.readInt32();
+            // Skip 16 bytes: zeroes2 (8 bytes long) and zeroes3 (8 bytes long)
+            const _zeroes2a = reader.readInt32();
+            const _zeroes2b = reader.readInt32();
+            const _zeroes2c = reader.readInt32();
+            const _zeroes2d = reader.readInt32();
+            const numMeta2 = reader.readInt32();
+            const meta2Offset = reader.readInt32();
+            const _zeroes4 = reader.readInt32();
+            const dataLength = reader.readInt32();
+            const dataOffset = reader.readInt32();
+
+            if (headerLength !== 64) {
+                throw new Error(`Invalid header length: ${headerLength}`);
+            }
+
+            const buildNumber = (revision >> 16) & 0xFFFF;
+
+            // Read Meta1 Block
+            const meta1 = [];
+            reader.seek(meta1Offset);
+            for (let i = 0; i < numMeta1; i++) {
+                meta1.push({
+                    parentIndex: reader.readInt32(),
+                    meta2EntryIdx: reader.readInt32(),
+                    numDirectChildren: reader.readInt32(),
+                    numAllChildren: reader.readInt32()
+                });
+            }
+
+            // Read Meta2 Block
+            const meta2 = [];
+            reader.seek(meta2Offset);
+            for (let i = 0; i < numMeta2; i++) {
+                const nameHash = reader.readInt32();
+                const offset = reader.readInt32();
+                const fieldInfo = reader.readInt32();
+                const isObject = (fieldInfo & 1) === 1;
+                const nameLen = (fieldInfo & 0b11111111100) >> 2;
+                const meta1Idx = (fieldInfo & 0b1111111111111111111100000000000) >> 11;
+
+                meta2.push({
+                    nameHash,
+                    offset,
+                    fieldInfo,
+                    isObject,
+                    nameLen,
+                    meta1Idx
+                });
+            }
+
+            // Read Data Block
+            const dataBlock = bytes.slice(dataOffset, dataOffset + dataLength);
+
+            // Parse Fields
+            const fields = [];
+            for (let i = 0; i < meta2.length; i++) {
+                const m = meta2[i];
+                let off = m.offset;
+
+                // Read field name
+                const name = readString(dataBlock, off, m.nameLen - 1);
+                off += m.nameLen;
+
+                // Find next field offset
+                let nextOffset = dataBlock.length;
+                for (let j = 0; j < meta2.length; j++) {
+                    if (meta2[j].offset > m.offset && meta2[j].offset < nextOffset) {
+                        nextOffset = meta2[j].offset;
+                    }
+                }
+
+                const rawData = dataBlock.slice(off, nextOffset);
+
+                fields.push({
+                    name,
+                    isObject: m.isObject,
+                    meta1Idx: m.meta1Idx,
+                    rawData,
+                    dataStartInFile: off,
+                    dataOffset: m.offset
+                });
+            }
+
+            // Sort fields by their offset in the data block
+            fields.sort((a, b) => a.dataOffset - b.dataOffset);
+
+            // Parse field values for non-object fields
+            for (const field of fields) {
+                if (!field.isObject) {
+                    field.value = parseFieldValue(field.rawData, field.dataStartInFile);
+                }
+            }
+
+            // Build object tree
+            const root = [];
+            const fieldStack = [];
+            let runningObjIdx = -1;
+
+            for (const field of fields) {
+                if (field.isObject) {
+                    field.children = [];
+                    const expected = (meta1[field.meta1Idx] && meta1[field.meta1Idx].numDirectChildren) || 0;
+                    field.expectedChildren = expected;
+                    runningObjIdx++;
+                }
+
+                if (fieldStack.length === 0) {
+                    root.push(field);
+                } else {
+                    field.parent = fieldStack[fieldStack.length - 1];
+                    field.parent.children.push(field);
+                }
+
+                if (field.isObject) {
+                    fieldStack.push(field);
+                }
+
+                while (fieldStack.length > 0 &&
+                       fieldStack[fieldStack.length - 1].children.length >= 
+                       fieldStack[fieldStack.length - 1].expectedChildren) {
+                    fieldStack.pop();
+                }
+            }
+
+            // Convert to JSON
+            function toJsonField(f) {
+                if (f.isObject) {
+                    const obj = {};
+                    if (f.children) {
+                        for (const c of f.children) {
+                            obj[c.name] = toJsonField(c);
+                        }
+                    }
+                    return obj;
+                }
+                // Return the parsed value, or null if undefined
+                return (f.value !== undefined) ? f.value : null;
+            }
+
+            const result = {};
+            for (const r of root) {
+                result[r.name] = toJsonField(r);
+            }
+
+            return {
+                data: result,
+                metadata: {
+                    numObjects: numMeta1,
+                    numFields: numMeta2,
+                    buildNumber: buildNumber,
+                    fileSize: buffer.byteLength
+                }
+            };
+        }
+
+        // UI Functions
+        function updateStatus(message, isError = false) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.classList.remove('hidden', 'error', 'success');
+            statusEl.classList.add(isError ? 'error' : 'success');
+        }
+
+        function hideStatus() {
+            document.getElementById('status').classList.add('hidden');
+        }
+
+        function updateInfo(metadata, fileName) {
+            const infoPanel = document.getElementById('infoPanel');
+            infoPanel.classList.remove('hidden');
+            document.getElementById('fileName').textContent = fileName;
+            document.getElementById('fileSize').textContent = (metadata.fileSize / 1024).toFixed(2) + ' KB';
+            document.getElementById('objectCount').textContent = metadata.numObjects;
+            document.getElementById('fieldCount').textContent = metadata.numFields;
+            document.getElementById('buildVersion').textContent = metadata.buildNumber;
+        }
+
+        function displayOutput(data) {
+            const outputContainer = document.getElementById('outputContainer');
+            outputContainer.classList.remove('hidden');
+            const output = document.getElementById('output');
+            output.value = JSON.stringify(data, null, 2);
+            document.getElementById('downloadBtn').disabled = false;
+            document.getElementById('copyBtn').disabled = false;
+        }
+
+        async function handleFile(file) {
+            try {
+                updateStatus('Decoding file...', false);
+                const buffer = await file.arrayBuffer();
+                const result = decodeDSON(buffer);
+                decodedData = result.data;
+                currentFileName = file.name.replace(/\.[^/.]+$/, '.json');
+                
+                console.log('Decoded result:', result);
+                console.log('Data keys:', Object.keys(result.data));
+                
+                updateInfo(result.metadata, file.name);
+                displayOutput(result.data);
+                updateStatus(`✓ Successfully decoded! (${result.metadata.numFields} fields)`, false);
+                setTimeout(hideStatus, 4000);
+            } catch (error) {
+                updateStatus(`✗ Error: ${error.message}`, true);
+                console.error(error);
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('uploadBtn').onclick = () => {
+            document.getElementById('fileInput').click();
+        };
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        document.getElementById('uploadArea').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        document.getElementById('uploadArea').addEventListener('dragover', (e) => {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.add('dragover');
+        });
+
+        document.getElementById('uploadArea').addEventListener('dragleave', () => {
+            document.getElementById('uploadArea').classList.remove('dragover');
+        });
+
+        document.getElementById('uploadArea').addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (!decodedData) return;
+            const json = JSON.stringify(decodedData, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentFileName;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', async () => {
+            if (!decodedData) return;
+            const json = JSON.stringify(decodedData, null, 2);
+            try {
+                await navigator.clipboard.writeText(json);
+                updateStatus('✓ Copied to clipboard!', false);
+                setTimeout(hideStatus, 2000);
+            } catch (err) {
+                updateStatus('✗ Failed to copy', true);
+            }
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            decodedData = null;
+            document.getElementById('output').value = '';
+            document.getElementById('fileInput').value = '';
+            document.getElementById('outputContainer').classList.add('hidden');
+            document.getElementById('infoPanel').classList.add('hidden');
+            document.getElementById('downloadBtn').disabled = true;
+            document.getElementById('copyBtn').disabled = true;
+            hideStatus();
+        });
+    </script>
+</body>
+</html>

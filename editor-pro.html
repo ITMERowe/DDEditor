@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darkest Dungeon Save Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #ff6b6b;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #808080;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .upload-area {
+            background: rgba(255, 107, 107, 0.1);
+            border: 3px dashed #ff6b6b;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: #ff8787;
+        }
+
+        .upload-area.dragover {
+            background: rgba(255, 107, 107, 0.3);
+            border-color: #ff8787;
+            transform: scale(1.02);
+        }
+
+        .upload-area.hidden {
+            display: none;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .status {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 4px solid #ff6b6b;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .status.error {
+            border-left-color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+            color: #ff8787;
+        }
+
+        .status.success {
+            border-left-color: #4caf50;
+            background: rgba(76, 175, 80, 0.1);
+            color: #81c784;
+        }
+
+        .status.hidden {
+            display: none;
+        }
+
+        .editor-area {
+            display: none;
+        }
+
+        .editor-area.visible {
+            display: block;
+        }
+
+        .file-header {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #404050;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-info {
+            display: flex;
+            gap: 30px;
+        }
+
+        .file-info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .file-info-label {
+            color: #808080;
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .file-info-value {
+            color: #ff8787;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .file-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            background: #ff6b6b;
+            border: none;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            background: #ff8787;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Heroes/Characters List */
+        .heroes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .hero-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid #404050;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .hero-card:hover {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.05);
+        }
+
+        .hero-card.selected {
+            border-color: #ff8787;
+            background: rgba(255, 107, 107, 0.1);
+            box-shadow: 0 0 15px rgba(255, 107, 107, 0.2);
+        }
+
+        .hero-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #404050;
+        }
+
+        .hero-name {
+            color: #ff8787;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .hero-class {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff8787;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .hero-stat {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .stat-label {
+            color: #808080;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            color: #e0e0e0;
+            font-weight: bold;
+        }
+
+        /* Editor Panel */
+        .editor-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #404050;
+            border-radius: 6px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .editor-title {
+            color: #ff6b6b;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .edit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .edit-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .edit-label {
+            color: #808080;
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea,
+        select {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid #404050;
+            border-radius: 4px;
+            color: #e0e0e0;
+            padding: 8px 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            transition: border-color 0.2s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #ff6b6b;
+            box-shadow: 0 0 8px rgba(255, 107, 107, 0.2);
+        }
+
+        /* Items List */
+        .items-section {
+            background: rgba(0, 0, 0, 0.2);
+            border-left: 3px solid #ff6b6b;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 4px;
+        }
+
+        .section-title {
+            color: #ff8787;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+
+        .items-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px;
+        }
+
+        .item-badge {
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid #ff6b6b;
+            color: #ff8787;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .generic-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .generic-item {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid #404050;
+            border-radius: 6px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .generic-item:hover {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.05);
+        }
+
+        .generic-item.selected {
+            border-color: #ff8787;
+            background: rgba(255, 107, 107, 0.1);
+        }
+
+        .generic-item-title {
+            color: #ff8787;
+            font-weight: bold;
+            margin-bottom: 8px;
+            word-break: break-word;
+        }
+
+        .generic-item-content {
+            font-size: 12px;
+            color: #e0e0e0;
+        }
+
+        .footer-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            .heroes-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+
+            .edit-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .file-info {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚔️ Darkest Dungeon Save Editor</h1>
+        <div class="subtitle">Human-friendly editor for Darkest Dungeon save files</div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-text">📁 Drop DSON file here or click to select</div>
+            <input type="file" id="fileInput" accept=".json" />
+        </div>
+
+        <div class="status hidden" id="status"></div>
+
+        <div class="editor-area" id="editorArea">
+            <div class="file-header">
+                <div class="file-info">
+                    <div class="file-info-item">
+                        <div class="file-info-label">File</div>
+                        <div class="file-info-value" id="infoFileName">-</div>
+                    </div>
+                    <div class="file-info-item">
+                        <div class="file-info-label">Type</div>
+                        <div class="file-info-value" id="infoFileType">-</div>
+                    </div>
+                    <div class="file-info-item">
+                        <div class="file-info-label">Size</div>
+                        <div class="file-info-value" id="infoFileSize">-</div>
+                    </div>
+                </div>
+                <div class="file-controls">
+                    <button id="downloadBtn">💾 Download</button>
+                    <button id="copyBtn">📋 Copy</button>
+                    <button id="clearBtn">🗑️ Clear</button>
+                </div>
+            </div>
+
+            <div id="editorContent"></div>
+
+            <div class="footer-controls">
+                <button id="saveBtn" disabled>💾 Save Changes</button>
+                <button id="resetBtn" disabled>↻ Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MAGIC = [0x01, 0xB1, 0x00, 0x00];
+        let decodedData = null;
+        let originalData = null;
+        let currentFileName = "data.json";
+        let currentMetadata = null;
+        let isModified = false;
+        let selectedItem = null;
+
+        // Decoder (same as before)
+        class BinaryReader {
+            constructor(buffer) {
+                this.buffer = buffer;
+                this.view = new DataView(buffer);
+                this.offset = 0;
+            }
+            readInt32() {
+                const value = this.view.getInt32(this.offset, true);
+                this.offset += 4;
+                return value;
+            }
+            readFloat32() {
+                const value = this.view.getFloat32(this.offset, true);
+                this.offset += 4;
+                return value;
+            }
+            readByte() {
+                const value = this.view.getUint8(this.offset);
+                this.offset += 1;
+                return value;
+            }
+            readBytes(count) {
+                const bytes = new Uint8Array(this.buffer, this.offset, count);
+                this.offset += count;
+                return bytes;
+            }
+            seek(offset) {
+                this.offset = offset;
+            }
+            peek() {
+                return this.offset;
+            }
+            remaining() {
+                return this.view.byteLength - this.offset;
+            }
+        }
+
+        function readString(bytes, offset, length) {
+            const arr = bytes.slice(offset, offset + length);
+            return new TextDecoder('utf-8').decode(arr);
+        }
+
+        function getAlignmentPadding(offset) {
+            return (4 - (offset % 4)) % 4;
+        }
+
+        function parseFieldValue(fieldData, dataOffsetInFile) {
+            if (fieldData.length === 0) return null;
+            const padding = getAlignmentPadding(dataOffsetInFile);
+            if (fieldData.length === 1) {
+                const byte = fieldData[0];
+                if (byte === 0 || byte === 1) return byte === 1;
+                if (byte >= 0x20 && byte <= 0x7E) return String.fromCharCode(byte);
+                return byte;
+            }
+            if (fieldData.length >= padding + 5) {
+                try {
+                    const view = new DataView(fieldData.buffer, fieldData.byteOffset + padding);
+                    const strlen = view.getInt32(0, true);
+                    if (strlen > 4 && fieldData.length === padding + 4 + strlen) {
+                        const stringDataBytes = fieldData.slice(padding + 4, padding + 4 + Math.min(4, strlen));
+                        const magic = Array.from(stringDataBytes);
+                        if (magic.length === 4 && magic.join(',') === MAGIC.join(',')) {
+                            try {
+                                const embeddedBuffer = fieldData.buffer.slice(fieldData.byteOffset + padding + 4, fieldData.byteOffset + padding + 4 + strlen - 1);
+                                const result = decodeDSON(embeddedBuffer);
+                                return result.data;
+                            } catch (e) {}
+                        }
+                        const str = readString(fieldData, padding + 4, strlen - 1);
+                        return str;
+                    }
+                } catch (e) {}
+            }
+            if (fieldData.length >= padding + 4) {
+                try {
+                    const view = new DataView(fieldData.buffer, fieldData.byteOffset + padding, 4);
+                    const intVal = view.getInt32(0, true);
+                    if (fieldData.length === padding + 4) return intVal;
+                } catch (e) {}
+            }
+            if (fieldData.length >= padding + 4) {
+                try {
+                    const view = new DataView(fieldData.buffer, fieldData.byteOffset + padding, 4);
+                    const floatVal = view.getFloat32(0, true);
+                    if (fieldData.length === padding + 4 && !Number.isInteger(floatVal)) return floatVal;
+                } catch (e) {}
+            }
+            return `<data:${fieldData.length}b>`;
+        }
+
+        function decodeDSON(buffer) {
+            const bytes = new Uint8Array(buffer);
+            const reader = new BinaryReader(buffer);
+            const magic = Array.from(bytes.slice(0, 4));
+            if (magic.join(',') !== MAGIC.join(',')) {
+                throw new Error(`Invalid magic number`);
+            }
+            reader.seek(0);
+            const magicNum = reader.readInt32();
+            const revision = reader.readInt32();
+            const headerLength = reader.readInt32();
+            const _zeroes1 = reader.readInt32();
+            const meta1Size = reader.readInt32();
+            const numMeta1 = reader.readInt32();
+            const meta1Offset = reader.readInt32();
+            const _zeroes2a = reader.readInt32();
+            const _zeroes2b = reader.readInt32();
+            const _zeroes2c = reader.readInt32();
+            const _zeroes2d = reader.readInt32();
+            const numMeta2 = reader.readInt32();
+            const meta2Offset = reader.readInt32();
+            const _zeroes4 = reader.readInt32();
+            const dataLength = reader.readInt32();
+            const dataOffset = reader.readInt32();
+            if (headerLength !== 64) throw new Error(`Invalid header length`);
+            const buildNumber = (revision >> 16) & 0xFFFF;
+            const meta1 = [];
+            reader.seek(meta1Offset);
+            for (let i = 0; i < numMeta1; i++) {
+                meta1.push({
+                    parentIndex: reader.readInt32(),
+                    meta2EntryIdx: reader.readInt32(),
+                    numDirectChildren: reader.readInt32(),
+                    numAllChildren: reader.readInt32()
+                });
+            }
+            const meta2 = [];
+            reader.seek(meta2Offset);
+            for (let i = 0; i < numMeta2; i++) {
+                const nameHash = reader.readInt32();
+                const offset = reader.readInt32();
+                const fieldInfo = reader.readInt32();
+                const isObject = (fieldInfo & 1) === 1;
+                const nameLen = (fieldInfo & 0b11111111100) >> 2;
+                const meta1Idx = (fieldInfo & 0b1111111111111111111100000000000) >> 11;
+                meta2.push({ nameHash, offset, fieldInfo, isObject, nameLen, meta1Idx });
+            }
+            const dataBlock = bytes.slice(dataOffset, dataOffset + dataLength);
+            const fields = [];
+            for (let i = 0; i < meta2.length; i++) {
+                const m = meta2[i];
+                let off = m.offset;
+                const name = readString(dataBlock, off, m.nameLen - 1);
+                off += m.nameLen;
+                let nextOffset = dataBlock.length;
+                for (let j = 0; j < meta2.length; j++) {
+                    if (meta2[j].offset > m.offset && meta2[j].offset < nextOffset) nextOffset = meta2[j].offset;
+                }
+                const rawData = dataBlock.slice(off, nextOffset);
+                fields.push({ name, isObject: m.isObject, meta1Idx: m.meta1Idx, rawData, dataStartInFile: off, dataOffset: m.offset });
+            }
+            fields.sort((a, b) => a.dataOffset - b.dataOffset);
+            for (const field of fields) {
+                if (!field.isObject) field.value = parseFieldValue(field.rawData, field.dataStartInFile);
+            }
+            const root = [];
+            const fieldStack = [];
+            let runningObjIdx = -1;
+            for (const field of fields) {
+                if (field.isObject) {
+                    field.children = [];
+                    const expected = (meta1[field.meta1Idx] && meta1[field.meta1Idx].numDirectChildren) || 0;
+                    field.expectedChildren = expected;
+                    runningObjIdx++;
+                }
+                if (fieldStack.length === 0) {
+                    root.push(field);
+                } else {
+                    field.parent = fieldStack[fieldStack.length - 1];
+                    field.parent.children.push(field);
+                }
+                if (field.isObject) fieldStack.push(field);
+                while (fieldStack.length > 0 && fieldStack[fieldStack.length - 1].children.length >= fieldStack[fieldStack.length - 1].expectedChildren) {
+                    fieldStack.pop();
+                }
+            }
+            function toJsonField(f) {
+                if (f.isObject) {
+                    const obj = {};
+                    if (f.children) {
+                        for (const c of f.children) obj[c.name] = toJsonField(c);
+                    }
+                    return obj;
+                }
+                return (f.value !== undefined) ? f.value : null;
+            }
+            const result = {};
+            for (const r of root) result[r.name] = toJsonField(r);
+            return { data: result, metadata: { numObjects: numMeta1, numFields: numMeta2, buildNumber: buildNumber, fileSize: buffer.byteLength } };
+        }
+
+        function detectFileType(data) {
+            const keys = Object.keys(data);
+            
+            // Roster file
+            if (data.heroes && Array.isArray(data.heroes)) {
+                return 'roster';
+            }
+            
+            // Estate file
+            if (data.buildings && Array.isArray(data.buildings)) {
+                return 'estate';
+            }
+            
+            // Quest file
+            if (data.quest_log && Array.isArray(data.quest_log)) {
+                return 'quest';
+            }
+            
+            // Progression file
+            if (data.statistics && data.progression_data) {
+                return 'progression';
+            }
+            
+            // Generic object with multiple items
+            if (Array.isArray(data)) {
+                return 'array';
+            }
+            
+            return 'generic';
+        }
+
+        function renderRosterEditor(data) {
+            let html = '<div class="heroes-grid" id="heroList">';
+            
+            if (!data.heroes || !Array.isArray(data.heroes)) {
+                html += '<div>No heroes found</div></div>';
+                return html;
+            }
+
+            data.heroes.forEach((hero, idx) => {
+                const name = hero.name || `Hero ${idx}`;
+                const heroClass = hero.heroclass || hero.character_class || 'Unknown';
+                const level = hero.level || hero.exp ? Math.floor((hero.exp || 0) / 1000) : 1;
+                const health = hero.health || '-';
+                const armor = hero.armor || '-';
+                
+                html += `
+                    <div class="hero-card" onclick="selectHero(${idx}, this)">
+                        <div class="hero-card-header">
+                            <div class="hero-name">${name}</div>
+                            <div class="hero-class">${heroClass}</div>
+                        </div>
+                        <div class="hero-stats">
+                            <div class="hero-stat">
+                                <div class="stat-label">Level</div>
+                                <div class="stat-value">${level}</div>
+                            </div>
+                            <div class="hero-stat">
+                                <div class="stat-label">Health</div>
+                                <div class="stat-value">${health}</div>
+                            </div>
+                            <div class="hero-stat">
+                                <div class="stat-label">Armor</div>
+                                <div class="stat-value">${armor}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            html += renderHeroEditor();
+            return html;
+        }
+
+        function renderHeroEditor() {
+            return `
+                <div class="editor-panel hidden" id="heroEditorPanel">
+                    <div class="editor-title">Edit Hero</div>
+                    <div class="edit-grid" id="heroEditGrid"></div>
+                    <div class="items-section" id="heroItemsSection"></div>
+                </div>
+            `;
+        }
+
+        function selectHero(idx, element) {
+            document.querySelectorAll('.hero-card.selected').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedItem = { type: 'hero', index: idx, data: decodedData.heroes[idx] };
+            displayHeroEditor(decodedData.heroes[idx]);
+        }
+
+        function displayHeroEditor(hero) {
+            const panel = document.getElementById('heroEditorPanel');
+            const grid = document.getElementById('heroEditGrid');
+            const itemsSection = document.getElementById('heroItemsSection');
+            
+            panel.classList.remove('hidden');
+
+            let editHtml = '';
+            const displayFields = ['name', 'heroclass', 'character_class', 'level', 'exp', 'health', 'armor', 'resolve'];
+            
+            for (const [key, value] of Object.entries(hero)) {
+                if (typeof value === 'string' || typeof value === 'number') {
+                    editHtml += `
+                        <div class="edit-field">
+                            <label class="edit-label">${key}</label>
+                            <input type="text" value="${value}" data-key="${key}" onchange="updateHeroField('${key}', this.value)">
+                        </div>
+                    `;
+                }
+            }
+
+            grid.innerHTML = editHtml;
+
+            // Show equipment/items
+            let itemsHtml = '<div class="section-title">Equipment & Items</div><div class="items-list">';
+            if (hero.equipment && Array.isArray(hero.equipment)) {
+                hero.equipment.forEach(item => {
+                    itemsHtml += `<div class="item-badge">${item || 'Empty'}</div>`;
+                });
+            }
+            itemsHtml += '</div>';
+            itemsSection.innerHTML = itemsHtml;
+        }
+
+        function updateHeroField(key, value) {
+            if (selectedItem && selectedItem.type === 'hero') {
+                selectedItem.data[key] = value;
+                isModified = true;
+                document.getElementById('saveBtn').disabled = false;
+                document.getElementById('resetBtn').disabled = false;
+            }
+        }
+
+        function renderGenericEditor(data) {
+            let html = '<div class="editor-panel">';
+            
+            for (const [key, value] of Object.entries(data)) {
+                if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                    html += `
+                        <div class="editor-title">${key}</div>
+                        <div class="edit-field" style="margin-bottom: 20px;">
+                            <input type="text" value="${value}" data-key="${key}" onchange="updateField('${key}', this.value)">
+                        </div>
+                    `;
+                } else if (typeof value === 'object' && value !== null) {
+                    if (Array.isArray(value)) {
+                        html += `<div class="editor-title">${key} (${value.length} items)</div>`;
+                        html += renderArrayContent(value, key);
+                    } else {
+                        html += `<div class="editor-title">${key}</div>`;
+                        html += renderObjectContent(value, key);
+                    }
+                }
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        function renderObjectContent(obj, parentKey) {
+            let html = '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.2); border-left: 3px solid #ff6b6b; border-radius: 4px;">';
+            
+            for (const [key, value] of Object.entries(obj)) {
+                if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                    html += `
+                        <div style="margin-bottom: 10px;">
+                            <label class="edit-label">${key}</label>
+                            <input type="text" value="${value}" data-key="${key}" onchange="updateNestedField('${parentKey}', '${key}', this.value)" style="width: 100%;">
+                        </div>
+                    `;
+                } else if (typeof value === 'object' && value !== null) {
+                    if (Array.isArray(value)) {
+                        html += `<div style="margin: 10px 0; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 3px;"><span style="color: #ff8787; font-weight: bold;">${key}:</span> Array[${value.length}]</div>`;
+                    } else {
+                        html += `<div style="margin: 10px 0; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 3px;"><span style="color: #ff8787; font-weight: bold;">${key}:</span> Object</div>`;
+                    }
+                }
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        function renderArrayContent(arr, parentKey) {
+            let html = '<div style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.2); border-left: 3px solid #ff6b6b; border-radius: 4px;">';
+            
+            if (arr.length === 0) {
+                html += '<div style="color: #808080;">Empty array</div>';
+            } else {
+                const firstItem = arr[0];
+                
+                if (typeof firstItem === 'object' && !Array.isArray(firstItem)) {
+                    // Array of objects - render as expandable list
+                    const keys = new Set();
+                    arr.forEach(item => {
+                        if (typeof item === 'object') {
+                            Object.keys(item).forEach(k => keys.add(k));
+                        }
+                    });
+
+                    html += '<table class="array-table" style="width: 100%; border-collapse: collapse;">';
+                    html += '<thead><tr><th style="padding: 8px; text-align: left; background: rgba(255,107,107,0.1); border: 1px solid #404050;">#</th>';
+                    Array.from(keys).forEach(k => {
+                        html += `<th style="padding: 8px; text-align: left; background: rgba(255,107,107,0.1); border: 1px solid #404050;">${k}</th>`;
+                    });
+                    html += '</tr></thead><tbody>';
+
+                    arr.forEach((item, idx) => {
+                        html += `<tr onclick="selectArrayItem('${parentKey}', ${idx}, this)" style="cursor: pointer;" id="array-item-${parentKey}-${idx}">`;
+                        html += `<td style="padding: 8px; border: 1px solid #404050;"><strong>${idx}</strong></td>`;
+                        Array.from(keys).forEach(k => {
+                            const v = item[k];
+                            const display = v !== null ? String(v).substring(0, 50) : '-';
+                            html += `<td style="padding: 8px; border: 1px solid #404050;">${display}</td>`;
+                        });
+                        html += '</tr>';
+                    });
+
+                    html += '</tbody></table>';
+                } else {
+                    // Array of primitives
+                    html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;">';
+                    arr.slice(0, 50).forEach((item, idx) => {
+                        html += `<div style="padding: 8px; background: rgba(0,0,0,0.2); border: 1px solid #404050; border-radius: 3px; font-size: 12px;">
+                            <span style="color: #808080;">[${idx}]</span> ${item !== null ? String(item).substring(0, 30) : 'null'}
+                        </div>`;
+                    });
+                    if (arr.length > 50) {
+                        html += `<div style="color: #808080; padding: 8px;">... ${arr.length - 50} more</div>`;
+                    }
+                    html += '</div>';
+                }
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        function updateField(key, value) {
+            decodedData[key] = value;
+            isModified = true;
+            document.getElementById('saveBtn').disabled = false;
+            document.getElementById('resetBtn').disabled = false;
+        }
+
+        function updateNestedField(parentKey, childKey, value) {
+            if (decodedData[parentKey] && typeof decodedData[parentKey] === 'object') {
+                decodedData[parentKey][childKey] = value;
+                isModified = true;
+                document.getElementById('saveBtn').disabled = false;
+                document.getElementById('resetBtn').disabled = false;
+            }
+        }
+
+        function selectArrayItem(parentKey, idx, element) {
+            document.querySelectorAll(`#array-item-${parentKey}-*`).forEach(el => el.style.background = '');
+            element.style.background = 'rgba(255, 107, 107, 0.1)';
+            selectedItem = { type: 'array-item', parentKey, index: idx };
+        }
+
+        function updateStatus(message, isError = false) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.classList.remove('hidden', 'error', 'success');
+            statusEl.classList.add(isError ? 'error' : 'success');
+        }
+
+        function hideStatus() {
+            document.getElementById('status').classList.add('hidden');
+        }
+
+        async function handleFile(file) {
+            try {
+                updateStatus('Decoding file...', false);
+                const buffer = await file.arrayBuffer();
+                const result = decodeDSON(buffer);
+                
+                decodedData = result.data;
+                originalData = JSON.parse(JSON.stringify(result.data));
+                currentFileName = file.name.replace(/\.[^/.]+$/, '.json');
+                currentMetadata = result.metadata;
+                isModified = false;
+                selectedItem = null;
+
+                // Detect file type
+                const fileType = detectFileType(decodedData);
+
+                // Update info
+                document.getElementById('infoFileName').textContent = file.name;
+                document.getElementById('infoFileType').textContent = fileType.toUpperCase();
+                document.getElementById('infoFileSize').textContent = (result.metadata.fileSize / 1024).toFixed(2) + ' KB';
+
+                // Render appropriate editor
+                const editorContent = document.getElementById('editorContent');
+                
+                if (fileType === 'roster') {
+                    editorContent.innerHTML = renderRosterEditor(decodedData);
+                } else {
+                    editorContent.innerHTML = renderGenericEditor(decodedData);
+                }
+
+                // Show editor
+                document.getElementById('uploadArea').classList.add('hidden');
+                document.getElementById('editorArea').classList.add('visible');
+                document.getElementById('downloadBtn').disabled = false;
+                document.getElementById('copyBtn').disabled = false;
+                document.getElementById('clearBtn').disabled = false;
+
+                updateStatus(`✓ Loaded! (${fileType})`, false);
+                setTimeout(hideStatus, 3000);
+            } catch (error) {
+                updateStatus(`✗ Error: ${error.message}`, true);
+                console.error(error);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('uploadArea').addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        document.getElementById('uploadArea').addEventListener('dragover', (e) => {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.add('dragover');
+        });
+
+        document.getElementById('uploadArea').addEventListener('dragleave', () => {
+            document.getElementById('uploadArea').classList.remove('dragover');
+        });
+
+        document.getElementById('uploadArea').addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (!decodedData) return;
+            const json = JSON.stringify(decodedData, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentFileName;
+            a.click();
+            URL.revokeObjectURL(url);
+            updateStatus('✓ Downloaded!', false);
+            setTimeout(hideStatus, 2000);
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', async () => {
+            if (!decodedData) return;
+            const json = JSON.stringify(decodedData, null, 2);
+            try {
+                await navigator.clipboard.writeText(json);
+                updateStatus('✓ Copied!', false);
+                setTimeout(hideStatus, 2000);
+            } catch (err) {
+                updateStatus('✗ Failed to copy', true);
+            }
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            decodedData = null;
+            originalData = null;
+            isModified = false;
+            selectedItem = null;
+            document.getElementById('uploadArea').classList.remove('hidden');
+            document.getElementById('editorArea').classList.remove('visible');
+            document.getElementById('fileInput').value = '';
+            document.getElementById('editorContent').innerHTML = '';
+            document.getElementById('downloadBtn').disabled = true;
+            document.getElementById('copyBtn').disabled = true;
+            document.getElementById('saveBtn').disabled = true;
+            document.getElementById('resetBtn').disabled = true;
+            hideStatus();
+        });
+
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            updateStatus('✓ Changes saved!', false);
+            isModified = false;
+            document.getElementById('saveBtn').disabled = true;
+            document.getElementById('resetBtn').disabled = true;
+            setTimeout(hideStatus, 2000);
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            decodedData = JSON.parse(JSON.stringify(originalData));
+            isModified = false;
+            selectedItem = null;
+            document.getElementById('saveBtn').disabled = true;
+            document.getElementById('resetBtn').disabled = true;
+            
+            const fileType = detectFileType(decodedData);
+            const editorContent = document.getElementById('editorContent');
+            
+            if (fileType === 'roster') {
+                editorContent.innerHTML = renderRosterEditor(decodedData);
+            } else {
+                editorContent.innerHTML = renderGenericEditor(decodedData);
+            }
+            
+            updateStatus('✓ Reset to original', false);
+            setTimeout(hideStatus, 2000);
+        });
+    </script>
+</body>
+</html>
